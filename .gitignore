@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 環境変数・認証情報
+.env
+.env.*
+*.local
+
+# エディタ・IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ログ・一時ファイル
+*.log
+*.tmp
+tmp/
