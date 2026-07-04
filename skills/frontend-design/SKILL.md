@@ -1,6 +1,6 @@
 ---
 name: frontend-design
-description: 既存のWebサイト、Webアプリ、ポートフォリオ、ダッシュボード、編集的なUIを、余白・無彩色・1px border・控えめな角丸・実コンテンツ中心のデザインへ差し替えるためのフロントエンドデザイン指針。基本的に Tailwind CSS と shadcn/ui を使い、必要に応じて $tailwind-design-system と $shadcn を併用しながら、既存の機能や情報構造を保ったまま視覚表現を変更するときに使用する。
+description: 既存の Web サイトやアプリの UI を、機能・情報構造を保ったまま余白・無彩色・1px border・控えめな角丸を基調としたデザインへ差し替えるときに使う。Tailwind CSS と shadcn/ui を前提とする。
 ---
 
 # Frontend Design
@@ -9,7 +9,7 @@ description: 既存のWebサイト、Webアプリ、ポートフォリオ、ダ�
 
 `references/design.md` を必ず読み、そこに書かれたトークン、サイズ、レイアウト、コンポーネント、モーション、避けることを基準に実装する。
 
-基本実装は Tailwind CSS と shadcn/ui を使う。Tailwind CSS の設計・トークン・utility の扱いは `$tailwind-design-system` を、shadcn/ui の追加・調整・修正は `$shadcn` を併用する。
+基本実装は Tailwind CSS と shadcn/ui を使う。Tailwind CSS の設計・トークン・utility の扱いは `$tailwind-4-docs` を、shadcn/ui の追加・調整・修正は `$shadcn` を併用する。
 
 ## 実装前に確認すること
 
@@ -42,7 +42,7 @@ description: 既存のWebサイト、Webアプリ、ポートフォリオ、ダ�
 
 ## Tailwind CSS / shadcn/ui
 
-- Tailwind CSS の設計・トークン・utility の扱いで迷う場合は `$tailwind-design-system` を使う。
+- Tailwind CSS の設計・トークン・utility の扱いで迷う場合は `$tailwind-4-docs` を使う。
 - shadcn/ui の追加・調整・修正で迷う場合は `$shadcn` を使う。
 - このスキルには Tailwind CSS や shadcn/ui の細かい使い方を増やさない。
 

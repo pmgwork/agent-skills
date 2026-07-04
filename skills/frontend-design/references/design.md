@@ -48,7 +48,7 @@ Light と Dark の2モードを使う。純白と純黒は避ける。`primary` 
 
 ## コンポーネント
 
-基本的に Tailwind CSS と shadcn/ui を使う。Tailwind CSS の設計・トークン・utility の扱いは `$tailwind-design-system` を参照し、shadcn/ui の追加・調整・修正は `$shadcn` を参照する。
+基本的に Tailwind CSS と shadcn/ui を使う。Tailwind CSS の設計・トークン・utility の扱いは `$tailwind-4-docs` を参照し、shadcn/ui の追加・調整・修正は `$shadcn` を参照する。
 
 - shadcn/ui のコンポーネントはそのまま使い、見た目はトークン上書きで変更する。
 - 見た目を変える必要がある場合は、まず `style.css` またはプロジェクトのトークン定義を調整する。

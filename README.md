@@ -6,20 +6,20 @@
 
 | スキル | 用途 |
 | --- | --- |
-| [paper-summary](./paper-summary/) | 論文 PDF から論文情報・Figure 1・日本語要約・BibTeX を抽出し、Obsidian vault に研究ノートとして登録します。 |
-| [paper-references-citation](./paper-references-citation/) | 論文の抄録・本文抜粋から、日本語学術論文の関連研究や序論で使える簡潔な引用文を作成します。 |
-| [paper-english-prodreading](./paper-english-prodreading/) | 学術論文の英文校正、または日本語原文からの英訳を行います。投稿先・分野の慣習や LaTeX 形式、指定用語を保持します。 |
-| [paper-writing-scripts](./paper-writing-scripts/) | 日本語の学術論文を、論理構造・段落構成・である調・句読点の観点から執筆・推敲します。 |
-| [frontend-design](./frontend-design/) | 既存の Web サイトや Web アプリの UI を、余白・無彩色・1px border・控えめな角丸を基調としたデザインへ差し替えます。Tailwind CSS と shadcn/ui を前提とします。 |
+| [paper-summary](./skills/paper-summary/) | 論文 PDF から論文情報・Figure 1・日本語要約・BibTeX を抽出し、Obsidian vault に研究ノートとして登録します。 |
+| [paper-references-citation](./skills/paper-references-citation/) | 論文の抄録・本文抜粋から、日本語学術論文の関連研究や序論で使える簡潔な引用文を作成します。 |
+| [paper-english-proofreading](./skills/paper-english-proofreading/) | 学術論文の英文校正、または日本語原文からの英訳を行います。投稿先・分野の慣習や LaTeX 形式、指定用語を保持します。 |
+| [paper-writing-scripts](./skills/paper-writing-scripts/) | 日本語の学術論文を、論理構造・段落構成・である調・句読点の観点から執筆・推敲します。 |
+| [frontend-design](./skills/frontend-design/) | 既存の Web サイトや Web アプリの UI を、余白・無彩色・1px border・控えめな角丸を基調としたデザインへ差し替えます。Tailwind CSS と shadcn/ui を前提とします。 |
 
 ## 構成
 
-各スキルはそれぞれのディレクトリに `SKILL.md` を持ち、必要に応じて参照資料（`references/`）やスクリプト（`scripts/`）を備えています。
+各スキルはそれぞれのディレクトリに `SKILL.md` を持ち、必要に応じて参照資料（`references/`）を備えています。
 
 ```
 skills/
 ├── frontend-design/
-├── paper-english-prodreading/
+├── paper-english-proofreading/
 ├── paper-references-citation/
 ├── paper-summary/
 └── paper-writing-scripts/
