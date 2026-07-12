@@ -4,12 +4,17 @@ PDF 解析は Docling だけを使う。本文抽出、Markdown 化、レイア�
 
 ## 実行方法
 
-Docling は `uvx`（uv のワンショット実行）で起動する。事前の import 確認やバージョン確認は原則として行わない。
+PATH 上にインストール済みの `docling` コマンドを使う。見つからない場合は、`uvx` などで自動インストールせず、処理を中止してユーザーに伝える。
 
 Docling 変換は 1 PDF につき 1 回だけ実行し、その出力を本文抽出と Figure 1 判定の両方に使う。入力 PDF と出力先は絶対パスで指定する。
 
 ```bash
-uvx --from "docling-slim[standard]" docling "<input.pdf>" \
+if ! command -v docling >/dev/null 2>&1; then
+    echo "docling がPATH上にありません。処理を中止します。" >&2
+    exit 1
+fi
+
+docling "<input.pdf>" \
   --to md \
   --image-export-mode referenced \
   --device cpu \
@@ -17,7 +22,7 @@ uvx --from "docling-slim[standard]" docling "<input.pdf>" \
   --output "<work/docling>"
 ```
 
-`docling` 実行ファイルは `docling-slim` が提供するため、`docling-slim[standard]`（フルの `docling` が内部依存する指定）を使う。`uvx --from docling docling` は警告が出て、uv が勧める `docling-slim` 単体は PDF 依存（`pypdfium2`、`docling_parse`）を欠き失敗するので、どちらも使わない。
+Docling の絶対パスをスキルに固定しない。利用者の環境で `docling` が PATH 上に見つかることを前提にする。見つからない場合に `uvx` やその他の方法で依存関係を取得してはならない。
 
 各オプションの意味:
 
@@ -43,7 +48,12 @@ uvx --from "docling-slim[standard]" docling "<input.pdf>" \
 画像ベース PDF で通常抽出できない場合だけ、ユーザーに確認して `--ocr`（または `--force-ocr`）を有効にする。
 
 ```bash
-uvx --from "docling-slim[standard]" docling "<input.pdf>" \
+if ! command -v docling >/dev/null 2>&1; then
+    echo "docling がPATH上にありません。処理を中止します。" >&2
+    exit 1
+fi
+
+docling "<input.pdf>" \
   --to md \
   --image-export-mode referenced \
   --device cpu \
