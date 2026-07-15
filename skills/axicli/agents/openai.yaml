@@ -1,0 +1,4 @@
+interface:
+  display_name: "AxiCLI"
+  short_description: "AxiDrawのSVG確認・プレビュー・安全な実機操作"
+  default_prompt: "$axicli を使って、このSVGを確認してからAxiDrawで安全にプロットしてください。"
