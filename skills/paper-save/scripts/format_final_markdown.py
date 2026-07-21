@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ensure blank lines around ATX headings in a final paper-save note."""
+"""Normalize numbered ATX levels and spacing in a final paper-save note."""
 
 from __future__ import annotations
 
@@ -11,6 +11,10 @@ from pathlib import Path
 
 HEADING_RE = re.compile(r"^ {0,3}#{1,6}(?:[ \t]+|$)")
 FENCE_RE = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+NUMBERED_HEADING_RE = re.compile(
+    r"^(?P<indent> {0,3})#{1,6}(?P<space>[ \t]+)"
+    r"(?P<number>\d+(?:\.\d+)*)(?P<suffix>\.?(?:[ \t]+.*)?$)"
+)
 
 
 class FormatError(RuntimeError):
@@ -22,6 +26,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     return parser.parse_args()
+
+
+def normalize_numbered_heading_level(line: str) -> str:
+    match = NUMBERED_HEADING_RE.match(line)
+    if match is None:
+        return line
+
+    depth = match.group("number").count(".") + 1
+    markdown_level = depth + 1
+    if markdown_level > 6:
+        raise FormatError(
+            f"番号付き見出しがMarkdownの最大階層を超えています: {line}"
+        )
+
+    return (
+        f'{match.group("indent")}{"#" * markdown_level}'
+        f'{match.group("space")}{match.group("number")}{match.group("suffix")}'
+    )
 
 
 def normalize_heading_spacing(text: str) -> str:
@@ -55,6 +77,7 @@ def normalize_heading_spacing(text: str) -> str:
 
         is_heading = active_fence is None and HEADING_RE.match(line) is not None
         if is_heading:
+            line = normalize_numbered_heading_level(line)
             while output and output[-1].strip() == "":
                 output.pop()
             if has_body_content:

@@ -79,6 +79,49 @@ class FormatFinalMarkdownTest(unittest.TestCase):
             self.assertIn("既に存在します", result.stderr)
             self.assertEqual(output.read_text(encoding="utf-8"), "existing\n")
 
+    def test_normalizes_numbered_heading_levels(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "note.md"
+            output = root / "formatted.md"
+            source.write_text(
+                "## 2 Method\n"
+                "Text.\n"
+                "## 2.1 Participants\n"
+                "Text.\n"
+                "## 2.1.1 Recruitment\n"
+                "Text.\n"
+                "#### 3. Results\n"
+                "Text.\n"
+                "```markdown\n"
+                "## 4.1 This heading is inside a fence\n"
+                "```\n",
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--input", str(source), "--output", str(output)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                output.read_text(encoding="utf-8"),
+                "## 2 Method\n\n"
+                "Text.\n\n"
+                "### 2.1 Participants\n\n"
+                "Text.\n\n"
+                "#### 2.1.1 Recruitment\n\n"
+                "Text.\n\n"
+                "## 3. Results\n\n"
+                "Text.\n"
+                "```markdown\n"
+                "## 4.1 This heading is inside a fence\n"
+                "```\n",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

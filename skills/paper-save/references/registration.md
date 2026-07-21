@@ -71,7 +71,7 @@ frontmatterの文字列は二重引用符で囲み、内部の `"` と `\\` をY
 
 本文は `references/content_formatting.md` に従ってAI整形する。Abstractがない論文では `## Abstract` を省略し、原論文の最初の主要章から始める。原文を要約、翻訳、説明追加、言い換えしない。後処理した画像は作業フォルダで個数と名前を確認してから、PDFとともにファイルシステム操作でvaultへコピーする。長いMarkdownやバイナリを `obsidian create` へ渡さない。
 
-vaultへ書き込む前に `scripts/format_final_markdown.py` を実行し、整形後のMarkdownだけを保存する。
+vaultへ書き込む前に `scripts/format_final_markdown.py` と `scripts/validate_heading_structure.py` を順に実行し、機械整形と見出し構造検証の両方に成功したMarkdownだけを保存する。
 
 ## 保存後の検証
 
@@ -82,6 +82,9 @@ vaultへ書き込む前に `scripts/format_final_markdown.py` を実行し、整
 - Abstract相当がある場合だけ `## Abstract` が存在し、その原文が保持されている。
 - 原論文の主要章、`## PDF`、`## BibTeX` が同じH2階層にある。
 - 原論文の見出し名、順序、相対階層が保持され、標準的な章名が捏造されていない。
+- 番号付きATX見出しが `2` → `##`、`2.1` → `###`、`2.1.1` → `####` の対応になっている。
+- `validate_heading_structure.py` が成功し、番号なし見出しを含めてheading mapと文字列、順序、階層、個数が一致している。
+- Figure/Table caption、図中・表中のラベルが見出しに化けておらず、見出しが対応本文のない孤立状態になっていない。
 - 多段組みの読み順が復元され、隠しテンプレート文字、著者情報、出版定型文が本文に残っていない。
 - 実質的な論文本文、caption、表、数式、本文中の引用、参考文献で挙げられた作品が欠落していない。
 - 参考文献一覧が、原文と同じ番号・順序の `1. [[{SanitizedTitle}|{OfficialTitle}]]` 形式だけで構成されている。

@@ -13,11 +13,12 @@ description: 論文PDFをDoclingで抽出し、AIで論文構造と読み順を�
 2. PDFをDoclingで1回だけ変換する。
 3. 公式メタデータを照合し、frontmatterとBibTeXを確定する。
 4. 画像参照を機械変換する。
-5. AIで論文構造と読み順を整形する。
-6. 参考文献の作品タイトルをObsidian内部リンクにする。
-7. 最終Markdownの見出し前後を機械整形する。
-8. Markdown、原本PDF、全画像をvaultへ保存する。
-9. 保存結果を読み戻して検証する。
+5. 原本PDFから見出し設計図を作る。
+6. 設計図に従って論文構造と読み順を整形する。
+7. 参考文献の作品タイトルをObsidian内部リンクにする。
+8. 最終Markdownを機械整形し、見出し設計図と照合する。
+9. Markdown、原本PDF、全画像をvaultへ保存する。
+10. 保存結果を読み戻して検証する。
 
 ## 1. 保存先と重複の確認
 
@@ -60,15 +61,19 @@ python3 scripts/postprocess_docling.py \
 - Doclingの文章と見出しは変更せず、次のAI整形工程へ渡す。
 - 変換できないローカル画像参照、PNG以外のartifact、空でない出力先があれば失敗する。
 
-## 5. AIによる構造整形
+## 5. PDFから見出し設計図を作成
 
-`prepared.md` を入力として、`references/content_formatting.md` に従い論文構造と読み順を復元する。章名を標準的な構成へ置き換えず、原論文に存在する見出し名、順序、相対階層を保持する。
+`references/heading_structure.md` に従い、原本PDFの全ページを視覚確認して `<work/final/heading-map.json>` を作る。Doclingの見出しレベルや抽出順を設計図の根拠にしない。番号なし見出しの階層、多段組みの読み順、各見出し直後の本文位置までPDFで確定してから次へ進む。
 
-## 6. 参考文献の内部リンク化
+## 6. AIによる構造整形
+
+`prepared.md`、原本PDF、`heading-map.json` を入力として、`references/content_formatting.md` に従い論文構造と読み順を復元する。章名を標準的な構成へ置き換えず、設計図の見出し名、順序、相対階層をそのまま適用する。
+
+## 7. 参考文献の内部リンク化
 
 参考文献一覧がある場合は `references/reference_links.md` に従い、一覧全体を番号付きの作品タイトル内部リンクへ置き換える。本文中の `[1]` などの引用記号と番号が対応するようにする。
 
-## 7. 最終Markdownの機械整形
+## 8. 最終Markdownの機械整形と構造検証
 
 frontmatter、AI整形済み本文、PDF埋め込み、BibTeXを作業用の最終ノートへまとめた後、`scripts/format_final_markdown.py` を1回実行する。
 
@@ -78,15 +83,25 @@ python3 scripts/format_final_markdown.py \
   --output "<work/final/note-formatted.md>"
 ```
 
-このスクリプトはYAML frontmatterとコードフェンスの内容を変更せず、frontmatter直後の最初のATX見出しは空行を挟まず配置し、それ以外のATX見出しの前とすべてのATX見出しの後へ空行を1行ずつ確保する。vaultへ保存するのは `note-formatted.md` とする。
+このスクリプトはYAML frontmatterとコードフェンスの内容を変更せず、番号付きATX見出しを `2` → `##`、`2.1` → `###`、`2.1.1` → `####` のように機械的に正規化する。さらに、frontmatter直後の最初のATX見出しは空行を挟まず配置し、それ以外のATX見出しの前とすべてのATX見出しの後へ空行を1行ずつ確保する。vaultへ保存するのは `note-formatted.md` とする。
 
-## 8. Obsidian登録
+続けて見出し構造を検証する。
+
+```bash
+python3 scripts/validate_heading_structure.py \
+  --markdown "<work/final/note-formatted.md>" \
+  --expected "<work/final/heading-map.json>"
+```
+
+検証が失敗した場合はvaultへ保存せず、原本PDF、heading map、Markdownを再照合する。番号なし見出しは機械整形では補正できないため、検証成功を必須とする。
+
+## 9. Obsidian登録
 
 frontmatter、本文テンプレート、ファイルコピー、検証は `references/registration.md` に従う。AI整形した本文を保存し、`<work/final/artifacts>` の全画像をvaultの対応フォルダへコピーする。
 
 既存の論文ノートは編集しない。`paper-summary` の既存要約ノートを移行しない。
 
-## 9. 完了報告
+## 10. 完了報告
 
 次を簡潔に報告する。
 
@@ -97,11 +112,12 @@ frontmatter、本文テンプレート、ファイルコピー、検証は `refe
 5. BibTeX key
 6. 公式メタデータで補完できなかった項目
 7. 内部リンク化できなかった参考文献の有無
-8. 検証結果
+8. 見出し設計図との照合を含む検証結果
 
 ## 参照ファイル
 
 - `references/pdf_parsing.md`: Doclingの実行と出力規則。
+- `references/heading_structure.md`: PDFからの見出し設計図作成、段組み順序、構造検証の規則。
 - `references/content_formatting.md`: AIによるノイズ除去、読み順復元、見出し正規化の規則。
 - `references/metadata.md`: 公式メタデータ照合とBibTeXの作成規則。
 - `references/naming.md`: ファイル、artifact、リンク、citekeyの命名規則。
