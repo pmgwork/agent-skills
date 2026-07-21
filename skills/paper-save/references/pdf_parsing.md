@@ -1,23 +1,20 @@
 # PDF解析
 
-PDFの本文、構造、表、数式、画像はDoclingの変換結果を基準にする。出力Markdownと画像は要約材料ではなく、AI整形を経て最終ノートを構成する一次成果物として扱う。
+PDFの本文、構造、表、数式、画像はDoclingの変換結果を基準にする。PATH上の `docling` を使い、自動インストールや `uvx` へのフォールバックは行わない。
 
-## 事前確認
+## OCRモード
 
-PATH上にインストール済みの `docling` を使う。見つからなければ自動インストールや `uvx` へのフォールバックをせず中止する。
+次のコマンドで先頭3ページのテキスト有無を確認する。
 
 ```bash
-if ! command -v docling >/dev/null 2>&1; then
-  echo "docling がPATH上にありません。処理を中止します。" >&2
-  exit 1
-fi
+python3 scripts/detect_pdf_text.py "<input.pdf>"
 ```
 
-DoclingのメジャーなCLI形状を確認し、`docling convert --help` が成功することを確認する。
+- 1文字以上取得できる: `no-ocr` とする。
+- 0文字: `ocr` とする。
+- `pdftotext` がない、または判定に失敗する: 確認せず既定の `no-ocr` とする。
 
-## 1回だけ変換する
-
-通常のテキストPDFではOCRを無効にする。
+選択したモードでDoclingを1回だけ実行する。
 
 ```bash
 docling convert "<input.pdf>" \
@@ -28,24 +25,17 @@ docling convert "<input.pdf>" \
   --output "<work/docling>"
 ```
 
-画像ベースPDFであることが変換前に分かっている場合だけ、ユーザーの確認を得て `--no-ocr` を `--ocr` に置き換える。通常変換の結果を見てOCR付きで再実行してはならない。OCRの要否を判断できない場合は、実行前にユーザーへ確認する。
+OCRを使う場合は `--no-ocr` を `--ocr` へ置き換える。
 
-同じ入力PDFに対するDocling変換は、選択したOCRモードで1回だけ実行する。Doclingの絶対パスをスキルへ固定せず、グローバルPython環境へパッケージをインストールしない。
+## 成功条件
 
-## 出力
-
-入力が `<PDF名>.pdf` の場合、次を期待する。
+入力が `<PDF名>.pdf` の場合、非空のMarkdownを必須とする。画像がある論文ではartifactフォルダも生成される。画像がなければartifactフォルダがなくてもよい。
 
 ```text
 <work/docling>/
 ├── <PDF名>.md
-└── <PDF名>_artifacts/
+└── <PDF名>_artifacts/  # 画像がある場合
     └── *.png
 ```
 
-- `<PDF名>.md` は画像参照の変換後、AIによる構造整形へ渡す。
-- `<PDF名>_artifacts/` 内の全PNGを最終 `artifacts/` へ保存する。
-- Figure 1だけを選別、複製、結合しない。
-- DoclingのMarkdownや画像フォルダを、登録後に削除される作業パスから直接リンクしない。
-
-変換後にMarkdownとartifactフォルダが存在することを確認する。Markdownが空、変換が異常終了、または抽出結果に重大な欠落がある場合は登録せず報告する。
+変換が異常終了した場合や重大な欠落がある場合は保存せず報告する。OCRモードの既定値を使うための確認は行わない。同じPDFへ別モードで再実行する必要が生じた場合だけユーザーへ確認する。全PNGを成果物として扱い、Figure 1だけの選別や結合は行わない。

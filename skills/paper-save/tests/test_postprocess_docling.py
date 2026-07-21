@@ -139,6 +139,40 @@ class PostprocessDoclingTest(unittest.TestCase):
             self.assertIn("# Text-only paper", (root / "final" / "prepared.md").read_text(encoding="utf-8"))
             self.assertEqual(list((root / "final" / "artifacts").iterdir()), [])
 
+    def test_accepts_preexisting_empty_output_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            artifacts = root / "paper_artifacts"
+            artifacts.mkdir()
+            (artifacts / "figure.png").write_bytes(b"figure")
+            markdown = root / "paper.md"
+            markdown.write_text("![figure](paper_artifacts/figure.png)\n", encoding="utf-8")
+            output_artifacts = root / "final" / "artifacts"
+            output_artifacts.mkdir(parents=True)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--markdown",
+                    str(markdown),
+                    "--artifacts-dir",
+                    str(artifacts),
+                    "--output-markdown",
+                    str(root / "final" / "prepared.md"),
+                    "--output-artifacts-dir",
+                    str(output_artifacts),
+                    "--asset-link-prefix",
+                    "assets/Title/artifacts",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((output_artifacts / "image_001.png").read_bytes(), b"figure")
+
 
 if __name__ == "__main__":
     unittest.main()

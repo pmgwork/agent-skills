@@ -1,6 +1,6 @@
 # メタデータとBibTeX
 
-Docling Markdownと原本PDFから、正式英語タイトル、出版年、DOI、著者名、掲載先を取得する。所属はauthorsへ含めない。
+Docling実行前に、原本PDFと公式情報から正式英語タイトル、出版年、DOI、著者名、掲載先を確定する。所属はauthorsへ含めない。Docling変換後に矛盾が見つかった場合は保存せず、原本PDFまたは公式情報と照合してメタデータ、`SanitizedTitle`、citekeyを確定し直し、重複確認を再実行する。
 
 ## 公式情報で補完する
 

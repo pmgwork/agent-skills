@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -150,10 +152,33 @@ def run(args: argparse.Namespace) -> int:
     transformed, artifacts = transform(text, args.markdown, args.artifacts_dir, args.asset_link_prefix)
 
     args.output_markdown.parent.mkdir(parents=True, exist_ok=True)
-    args.output_artifacts_dir.mkdir(parents=True, exist_ok=True)
-    for source, filename in artifacts:
-        shutil.copy2(source, args.output_artifacts_dir / filename)
-    args.output_markdown.write_text(transformed, encoding="utf-8")
+    args.output_artifacts_dir.parent.mkdir(parents=True, exist_ok=True)
+    stage_root = Path(
+        tempfile.mkdtemp(prefix=".paper-save-postprocess-", dir=args.output_markdown.parent)
+    )
+    stage_markdown = stage_root / "prepared.md"
+    stage_artifacts = stage_root / "artifacts"
+    stage_artifacts.mkdir()
+    committed_artifacts = False
+    try:
+        for source, filename in artifacts:
+            shutil.copy2(source, stage_artifacts / filename)
+        stage_markdown.write_text(transformed, encoding="utf-8")
+
+        if args.output_artifacts_dir.exists():
+            args.output_artifacts_dir.rmdir()
+        os.replace(stage_artifacts, args.output_artifacts_dir)
+        committed_artifacts = True
+        os.replace(stage_markdown, args.output_markdown)
+    except Exception:
+        if committed_artifacts and args.output_artifacts_dir.exists():
+            try:
+                os.replace(args.output_artifacts_dir, stage_artifacts)
+            except OSError:
+                pass
+        raise
+    finally:
+        shutil.rmtree(stage_root, ignore_errors=True)
     print(f"Markdown: {args.output_markdown}")
     print(f"Artifacts: {len(artifacts)}")
     return 0

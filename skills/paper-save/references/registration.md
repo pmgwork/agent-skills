@@ -1,16 +1,8 @@
 # Obsidian登録
 
-## vaultルート
+## vaultと保存構造
 
-ユーザー指定がなければ現在アクティブなvaultの `papers` へ保存する。
-
-```bash
-obsidian vault info=path
-```
-
-別vaultが指定された場合は `obsidian vaults verbose` から対応する絶対パスを解決する。Obsidian CLIが利用できなければ、書き込み前にvaultルートをユーザーへ確認する。
-
-## 保存構造
+ユーザーがvaultを指定した場合は、そのパスを再確認せず使用する。指定がなければ `obsidian vault info=path` で現在のvaultを解決し、その `papers` へ保存する。指定がなくObsidian CLIも使えない場合だけ、書き込み前にvaultルートを確認する。
 
 ```text
 <VAULT_ROOT>/papers/
@@ -23,16 +15,18 @@ obsidian vault info=path
             └── image_002.png
 ```
 
+`papers` がなければ作成する。処理ごとにvault外の新しい作業フォルダを使う。
+
 ## 重複防止
 
-書き込み前に次を確認する。
+`scripts/save_paper.py --check-only` で次の衝突を処理前に確認する。
 
-- `papers/{SanitizedTitle}.md` が存在しない。
-- `papers/assets/{SanitizedTitle}/` が存在しない。
-- `papers/assets/{SanitizedTitle}/{SanitizedTitle}.pdf` が存在しない。
-- frontmatterの `citekey` が既存の `papers/*.md` に存在しない。
+- 同名Markdownまたは同名assetsフォルダ
+- 既存ノートの同じcitekey
+- DOIがある場合は既存ノートの同じ正規化済みDOI
+- ファイルシステムへ保存できない `{SanitizedTitle}`
 
-いずれかが衝突した場合は、上書きも自動サフィックス付与もせず中止する。既存ノートや既存assetsフォルダの内容を変更しない。
+保存時にも同じ確認を行う。衝突時は上書きや自動サフィックス付与をせず中止する。
 
 ## ノート形式
 
@@ -45,14 +39,15 @@ authors:
   - "Author Name"
 source: "Conference or Journal"
 citekey: author2026title
+figure: "assets/{SanitizedTitle}/artifacts/image_001.png"
 ---
 ## Abstract
 
-Abstract相当が存在する場合のみ、その原文……
+Abstractがある場合のみ原文……
 
 ## 原論文の最初の主要章
 
-AIで構造と読み順を整えた原文……
+整形した原文……
 
 ## PDF
 
@@ -67,44 +62,19 @@ AIで構造と読み順を整えた原文……
 ```
 ````
 
-frontmatterの文字列は二重引用符で囲み、内部の `"` と `\\` をYAMLとしてエスケープする。`year` が不明な場合は `year: ""`、著者が不明な場合は `authors: []` とする。
+必須frontmatterは `title`、`year`、`doi`、`authors`、`source`、`citekey` とする。Figure 1を特定できた場合は `figure` も追加する。`title`、`doi`、`source`、各著者名、`figure` は二重引用符で囲み、内部の二重引用符とバックスラッシュをYAML規則に従ってエスケープする。citekeyは小文字英数字の未引用文字列とする。年が不明なら `year: ""`、著者が不明なら `authors: []` とする。
 
-本文は `references/content_formatting.md` に従ってAI整形する。Abstractがない論文では `## Abstract` を省略し、原論文の最初の主要章から始める。原文を要約、翻訳、説明追加、言い換えしない。後処理した画像は作業フォルダで個数と名前を確認してから、PDFとともにファイルシステム操作でvaultへコピーする。長いMarkdownやバイナリを `obsidian create` へ渡さない。
+参考文献一覧は保存しない。長いMarkdownやバイナリを `obsidian create` へ渡さない。
 
-vaultへ書き込む前に `scripts/format_final_markdown.py` と `scripts/validate_heading_structure.py` を順に実行し、機械整形と見出し構造検証の両方に成功したMarkdownだけを保存する。
+## 保存
 
-## 保存後の検証
+`scripts/save_paper.py` は見出し前後の空行と番号付き見出しの階層を整え、次を確認してから直接保存する。
 
-作成したMarkdownを読み戻し、次を確認する。
+- MarkdownとPDFが非0 byteである。
+- artifacts内が非0 byteのPNGだけである。
+- PDF埋め込みが期待するvault相対パスと一致する。
+- 各画像埋め込みがartifacts内の画像を指す。
+- `figure` がある場合は、artifacts内の非0 byte PNGを指す。
+- 保存後のMarkdown、PDF、画像数が入力と一致する。
 
-- frontmatterが構文上成立し、必須7項目が存在する。
-- H1、論文タイトルの重複、`原文`、`本文` のコンテナ見出しが存在しない。
-- Abstract相当がある場合だけ `## Abstract` が存在し、その原文が保持されている。
-- 原論文の主要章、`## PDF`、`## BibTeX` が同じH2階層にある。
-- 原論文の見出し名、順序、相対階層が保持され、標準的な章名が捏造されていない。
-- 番号付きATX見出しが `2` → `##`、`2.1` → `###`、`2.1.1` → `####` の対応になっている。
-- `validate_heading_structure.py` が成功し、番号なし見出しを含めてheading mapと文字列、順序、階層、個数が一致している。
-- Figure/Table caption、図中・表中のラベルが見出しに化けておらず、見出しが対応本文のない孤立状態になっていない。
-- 多段組みの読み順が復元され、隠しテンプレート文字、著者情報、出版定型文が本文に残っていない。
-- 実質的な論文本文、caption、表、数式、本文中の引用、参考文献で挙げられた作品が欠落していない。
-- 参考文献一覧が、原文と同じ番号・順序の `1. [[{SanitizedTitle}|{OfficialTitle}]]` 形式だけで構成されている。
-- 参考文献リンク数が原文の参考文献項目数と一致し、著者、年、掲載先、ページ、DOIが一覧に残っていない。
-- 本文中の引用記号が原文のまま維持され、Referencesの番号と対応している。
-- Docling由来のインライン数式がLaTeXへ復元され、`0 . 5`、`𝑝 < =` のような分離文字が残っていない。
-- frontmatter直後の最初のATX見出しとの間に空行がなく、それ以外のATX見出しの直前とすべてのATX見出しの直後に空行があり、References最終リンクと `## PDF` の間にも空行がある。
-- すべてのFigureが `画像埋め込み → 空行 → 原文caption` の順で配置されている。
-- すべてのObsidian画像リンクが実在する非0 byteのPNGを指す。
-- Doclingの全PNGが `artifacts/` に保存されている。
-- PDF埋め込みが実在する非0 byteのPDFを指す。
-- BibTeX keyとfrontmatterの `citekey` が一致し、命名規則に従う。
-- BibTeXの数値ページ範囲が `--` で表記され、曲線引用符や範囲用Unicodeダッシュが残っていない。
-- Docling作業ディレクトリ、`<PDF名>_artifacts`、元画像名へのリンクが残っていない。
-- 日本語要約、翻訳、説明文、rating、tags、Figure 1専用画像が追加されていない。
-- 登録前に存在した論文ノートの内容が変更されていない。
-
-Obsidian CLIが使える場合は最後に読み戻しと提示へ利用してよい。
-
-```bash
-obsidian read path="papers/{SanitizedTitle}.md"
-obsidian open path="papers/{SanitizedTitle}.md"
-```
+既存ファイルは変更しない。保存に失敗した場合は、その実行で新規作成した対象だけを除去する。
