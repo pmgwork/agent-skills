@@ -30,6 +30,7 @@ def normalize_heading_spacing(text: str) -> str:
     active_fence: str | None = None
     in_frontmatter = bool(lines and lines[0].strip() == "---")
     after_heading = False
+    has_body_content = False
 
     for index, line in enumerate(lines):
         if in_frontmatter:
@@ -49,16 +50,18 @@ def normalize_heading_spacing(text: str) -> str:
             elif active_fence == fence[0]:
                 active_fence = None
             output.append(line)
+            has_body_content = True
             continue
 
         is_heading = active_fence is None and HEADING_RE.match(line) is not None
         if is_heading:
             while output and output[-1].strip() == "":
                 output.pop()
-            if output:
+            if has_body_content:
                 output.append("")
             output.append(line)
             after_heading = True
+            has_body_content = True
             continue
 
         if after_heading:
@@ -68,6 +71,8 @@ def normalize_heading_spacing(text: str) -> str:
             after_heading = False
 
         output.append(line)
+        if line.strip():
+            has_body_content = True
 
     if in_frontmatter:
         raise FormatError("YAML frontmatterが閉じられていません")

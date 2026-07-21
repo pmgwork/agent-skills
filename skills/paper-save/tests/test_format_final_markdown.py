@@ -46,7 +46,7 @@ class FormatFinalMarkdownTest(unittest.TestCase):
                 output.read_text(encoding="utf-8"),
                 "---\n"
                 'title: "Paper"\n'
-                "---\n\n"
+                "---\n"
                 "## Abstract\n\n"
                 "Text.\n\n"
                 "## References\n\n"

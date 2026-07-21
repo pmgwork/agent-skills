@@ -46,7 +46,6 @@ authors:
 source: "Conference or Journal"
 citekey: author2026title
 ---
-
 ## Abstract
 
 Abstract相当が存在する場合のみ、その原文……
@@ -89,7 +88,7 @@ vaultへ書き込む前に `scripts/format_final_markdown.py` を実行し、整
 - 参考文献リンク数が原文の参考文献項目数と一致し、著者、年、掲載先、ページ、DOIが一覧に残っていない。
 - 本文中の引用記号が原文のまま維持され、Referencesの番号と対応している。
 - Docling由来のインライン数式がLaTeXへ復元され、`0 . 5`、`𝑝 < =` のような分離文字が残っていない。
-- すべてのATX見出しの直前と直後に空行があり、References最終リンクと `## PDF` の間にも空行がある。
+- frontmatter直後の最初のATX見出しとの間に空行がなく、それ以外のATX見出しの直前とすべてのATX見出しの直後に空行があり、References最終リンクと `## PDF` の間にも空行がある。
 - すべてのFigureが `画像埋め込み → 空行 → 原文caption` の順で配置されている。
 - すべてのObsidian画像リンクが実在する非0 byteのPNGを指す。
 - Doclingの全PNGが `artifacts/` に保存されている。

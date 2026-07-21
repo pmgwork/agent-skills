@@ -78,7 +78,7 @@ python3 scripts/format_final_markdown.py \
   --output "<work/final/note-formatted.md>"
 ```
 
-このスクリプトはYAML frontmatterとコードフェンスの内容を変更せず、すべてのATX見出しの前後へ空行を1行ずつ確保する。vaultへ保存するのは `note-formatted.md` とする。
+このスクリプトはYAML frontmatterとコードフェンスの内容を変更せず、frontmatter直後の最初のATX見出しは空行を挟まず配置し、それ以外のATX見出しの前とすべてのATX見出しの後へ空行を1行ずつ確保する。vaultへ保存するのは `note-formatted.md` とする。
 
 ## 8. Obsidian登録
 
