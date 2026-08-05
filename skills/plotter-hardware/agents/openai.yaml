@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plotter Hardware"
+  short_description: "AxiDrawとGPIOソレノイドをREST API経由で安全に操作"
+  default_prompt: "$plotter-hardware を使って、Plotter Hardwareの状態を確認してから指定の操作を安全に実行してください。"

@@ -1,4 +1,0 @@
-interface:
-  display_name: "BotHub Hardware"
-  short_description: "AxiDrawとGPIOソレノイドをREST API経由で安全に操作"
-  default_prompt: "$bothub-hardware を使って、BotHub Hardwareの状態を確認してから指定の操作を安全に実行してください。"
