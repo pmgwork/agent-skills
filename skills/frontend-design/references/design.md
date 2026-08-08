@@ -16,18 +16,19 @@ Light と Dark の2モードを使う。純白と純黒は避ける。`primary` 
 | Role | Light | Dark |
 | :--- | :--- | :--- |
 | `primary` | `#28a8d0` | `#28a8d0` |
-| `background` | `#f2f2f2` | `#1a1a1a` |
-| `surface-muted` | `#f0f0f0` | `#1c1c1c` |
-| `text` | `#1a1a1a` | `#e6e6e6` |
+| `background` | `#f2f2f2` | `#121212` |
+| `surface-muted` | `#f0f0f0` | `#161616` |
+| `text` | `#121212` | `#e6e6e6` |
 | `text-muted` | `#b3b3b3` | `#4d4d4d` |
 | `border-strong` | `#cccccc` | `#404040` |
-| `border-subtle` | `#e6e6e6` | `#262626` |
+| `border-subtle` | `#e6e6e6` | `#202020` |
 
 - アクセントカラーは `primary` だけにする。
 - 塗りの面より、1px border を優先する。
 - 背景階層は `background` と `surface-muted` までにする。
 - Dark では、border を背景より一段だけ明るくする。
-- モード切替は `prefers-color-scheme` を基準に、トークン値だけを差し替える。
+- モード切替はユーザーが操作できるボタンで行い、初期状態は `prefers-color-scheme` を基準にする。
+- ユーザーが選択したモードは保持し、再訪時にも反映する。
 
 ## タイポグラフィ
 
@@ -54,6 +55,7 @@ Light と Dark の2モードを使う。純白と純黒は避ける。`primary` 
 - 見た目を変える必要がある場合は、まず `style.css` またはプロジェクトのトークン定義を調整する。
 - SVGアイコンは、基本的に `lucide` を使う。
 - `lucide` に該当アイコンがない場合だけ、既存のアイコンセットまたは最小限の独自SVGを使う。
+- Light / Dark の切り替えボタンを用意し、現在の状態が分かるラベルまたは `aria-label` を付ける。
 - カードは、反復項目、モーダル、明確に枠が必要なツールにだけ使う。
 - 角丸は `rounded-md` 以下を基本にする。
 - メディア、カード、ボタンを過度に丸めない。
