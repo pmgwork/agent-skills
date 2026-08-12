@@ -20,8 +20,13 @@ description: 論文PDFをDoclingで抽出し、原文を軽く整形して全画
 
 保存先とノート形式は `references/registration.md`、正式メタデータとBibTeXは `references/metadata.md`、ファイル名とcitekeyは `references/naming.md` に従う。
 
+メタデータは通常、高速モードで取得する。まずPDF内の情報を使い、ネットワーク照合は不足または曖昧な項目がある場合だけ行う。ユーザーが公式情報の厳密な照合を明示した場合のみ、完全な公式照合フローを使う。
+
 vaultルートを解決し、`papers` とvault外の作業フォルダを用意する。
-ユーザーがvaultを指定済みなら、その保存先を再確認しない。
+`PAPER_SAVE_VAULT_ROOT` が設定されていれば、そのパスを既定値として使う。
+ユーザーがvaultを指定済みなら、その保存先を再確認せず、環境変数より優先する。
+環境変数もユーザー指定もない場合は、保存処理を始める前にvaultルートをユーザーへ尋ねる。
+vaultルートの解決にObsidian CLIは使用しない。
 
 ```bash
 mkdir -p "<VAULT_ROOT>/papers"
@@ -36,12 +41,12 @@ paper_save_work="$(mktemp -d)"
 python3 scripts/save_paper.py \
   --check-only \
   --papers-dir "<VAULT_ROOT>/papers" \
-  --sanitized-title "{SanitizedTitle}" \
-  --citekey "<citekey>" \
-  --doi "<normalized-doi-or-empty>"
+  --sanitized-title "{SanitizedTitle}"
 ```
 
 衝突時は上書きや自動改名をせず中止する。
+
+OCRが必要と判定した場合は、Docling実行前にチャットで明示してから、そのままOCR変換を続行する。
 
 ## 2. Docling変換
 
@@ -85,12 +90,10 @@ python3 scripts/save_paper.py \
   --paper-pdf "<input.pdf>" \
   --artifacts-dir "<work/final/artifacts>" \
   --papers-dir "<VAULT_ROOT>/papers" \
-  --sanitized-title "{SanitizedTitle}" \
-  --citekey "<citekey>" \
-  --doi "<normalized-doi-or-empty>"
+  --sanitized-title "{SanitizedTitle}"
 ```
 
-このスクリプトは重複、入力と保存結果の非0 byte、PNG、PDF埋め込み、画像埋め込み、サムネイル参照先を確認する。既存ノートを編集せず、`paper-summary` の既存要約ノートも移行しない。
+このスクリプトは重複、入力と保存結果の非0 byte、PNG、PDF埋め込み、画像埋め込み、サムネイル参照先を確認する。既存ノートは編集しない。
 
 ## 完了報告
 

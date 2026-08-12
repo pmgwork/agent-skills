@@ -2,7 +2,13 @@
 
 ## vaultと保存構造
 
-ユーザーがvaultを指定した場合は、そのパスを再確認せず使用する。指定がなければ `obsidian vault info=path` で現在のvaultを解決し、その `papers` へ保存する。指定がなくObsidian CLIも使えない場合だけ、書き込み前にvaultルートを確認する。
+`PAPER_SAVE_VAULT_ROOT` が設定されていれば、そのパスを既定のVaultルートとして使用する。ユーザーがvaultを指定した場合は、そのパスを再確認せず使用し、環境変数より優先する。両方とも未設定の場合は、書き込み前にvaultルートをユーザーへ尋ねる。vaultルートの解決にObsidian CLIは使用しない。
+
+環境変数の設定例:
+
+```bash
+export PAPER_SAVE_VAULT_ROOT="/Users/yuto/Documents/Obsidian/MyVault"
+```
 
 ```text
 <VAULT_ROOT>/papers/
@@ -21,12 +27,11 @@
 
 `scripts/save_paper.py --check-only` で次の衝突を処理前に確認する。
 
-- 同名Markdownまたは同名assetsフォルダ
-- 既存ノートの同じcitekey
-- DOIがある場合は既存ノートの同じ正規化済みDOI
+- 同名Markdown
+- 同名で内容のあるassetsフォルダ
 - ファイルシステムへ保存できない `{SanitizedTitle}`
 
-保存時にも同じ確認を行う。衝突時は上書きや自動サフィックス付与をせず中止する。
+空のassetsフォルダは再利用する。保存時にも同じ簡易確認を行い、衝突時は上書きや自動サフィックス付与をせず中止する。
 
 ## ノート形式
 
@@ -64,7 +69,7 @@ Abstractがある場合のみ原文……
 
 必須frontmatterは `title`、`year`、`doi`、`authors`、`source`、`citekey` とする。Figure 1を特定できた場合は `figure` も追加する。`title`、`doi`、`source`、各著者名、`figure` は二重引用符で囲み、内部の二重引用符とバックスラッシュをYAML規則に従ってエスケープする。citekeyは小文字英数字の未引用文字列とする。年が不明なら `year: ""`、著者が不明なら `authors: []` とする。
 
-参考文献一覧は保存しない。長いMarkdownやバイナリを `obsidian create` へ渡さない。
+参考文献一覧は保存しない。
 
 ## 保存
 

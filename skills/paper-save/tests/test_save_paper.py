@@ -29,10 +29,6 @@ class SavePaperTest(unittest.TestCase):
             str(self.papers),
             "--sanitized-title",
             "Paper Title",
-            "--citekey",
-            "author2026paper",
-            "--doi",
-            "https://doi.org/10.1/paper",
             *extra,
         ]
 
@@ -75,26 +71,17 @@ class SavePaperTest(unittest.TestCase):
         result = self.run_command("--check-only")
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_check_only_rejects_path_citekey_and_doi_conflicts(self) -> None:
+    def test_check_only_rejects_path_conflicts(self) -> None:
         (self.papers / "Paper Title.md").write_text("existing\n", encoding="utf-8")
         result = self.run_command("--check-only")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("登録先が既に存在", result.stderr)
-        (self.papers / "Paper Title.md").unlink()
 
-        (self.papers / "Existing.md").write_text(
-            '---\ndoi: ""\ncitekey: author2026paper\n---\n', encoding="utf-8"
-        )
-        result = self.run_command("--check-only")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("citekey", result.stderr)
-        (self.papers / "Existing.md").write_text(
-            '---\ndoi: "https://doi.org/10.1/PAPER"\ncitekey: other\n---\n',
-            encoding="utf-8",
-        )
-        result = self.run_command("--check-only")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("DOI", result.stderr)
+    def test_reuses_empty_assets_directory(self) -> None:
+        (self.papers / "assets" / "Paper Title").mkdir(parents=True)
+        self.prepare()
+        result = self.run_command(*self.save_args())
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_formats_and_saves_outputs(self) -> None:
         note = self.note("![[assets/Paper Title/artifacts/image_001.png]]\n").replace(

@@ -14,6 +14,8 @@ python3 scripts/detect_pdf_text.py "<input.pdf>"
 - 0文字: `ocr` とする。
 - `pdftotext` がない、または判定に失敗する: 確認せず既定の `no-ocr` とする。
 
+`ocr` と判定した場合は、Doclingを実行する前にチャットで「OCRが必要なPDFです」と明示する。確認待ちにはせず、そのままOCR変換を続行する。
+
 選択したモードでDoclingを1回だけ実行する。
 
 ```bash

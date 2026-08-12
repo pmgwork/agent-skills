@@ -50,4 +50,4 @@ papers/assets/{SanitizedTitle}/artifacts/image_002.png
 
 例: `smith2026modular`、`unknownnodateinteraction`
 
-既存ノートに同じkeyがある場合は自動変更せず、登録を中止して衝突を報告する。
+citekeyはfrontmatterとBibTeXで一致させる。重複確認は登録先の同名Markdownと中身のあるassetsフォルダを対象とし、既存ノートのcitekey全件走査は行わない。

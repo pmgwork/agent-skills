@@ -17,11 +17,6 @@ NUMBERED_HEADING_RE = re.compile(
     r"^(?P<indent> {0,3})#{1,6}(?P<space>[ \t]+)"
     r"(?P<number>\d+(?:\.\d+)*)(?P<suffix>\.?(?:[ \t]+.*)?$)"
 )
-CITEKEY_RE = re.compile(
-    r"^citekey:\s*(?:\"(?P<quoted>[^\"]+)\"|(?P<plain>\S+))\s*$",
-    re.MULTILINE,
-)
-DOI_RE = re.compile(r'^doi:\s*"(?P<value>[^"]*)"\s*$', re.MULTILINE)
 FIGURE_LINE_RE = re.compile(r"^figure:.*$", re.MULTILINE)
 FIGURE_RE = re.compile(r'^figure:\s*"(?P<path>[^"]+)"\s*$', re.MULTILINE)
 WIKI_PDF_RE = re.compile(r"!\[\[(?P<path>[^\]\n]+\.pdf)\]\]", re.IGNORECASE)
@@ -37,19 +32,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--papers-dir", required=True, type=Path)
     parser.add_argument("--sanitized-title", required=True)
-    parser.add_argument("--citekey", required=True)
-    parser.add_argument("--doi", default="")
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--markdown", type=Path)
     parser.add_argument("--paper-pdf", type=Path)
     parser.add_argument("--artifacts-dir", type=Path)
     return parser.parse_args()
-
-
-def normalize_doi(value: str) -> str:
-    normalized = value.strip().lower()
-    normalized = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", normalized)
-    return normalized.rstrip("/ ")
 
 
 def validate_name(papers_dir: Path, title: str) -> None:
@@ -73,30 +60,18 @@ def extract_frontmatter(text: str) -> str:
     return text[4:end] if end >= 0 else ""
 
 
-def read_frontmatter(path: Path) -> str:
-    return extract_frontmatter(path.read_text(encoding="utf-8"))
-
-
-def check_conflicts(papers_dir: Path, title: str, citekey: str, doi: str) -> None:
+def check_conflicts(papers_dir: Path, title: str) -> None:
     if not papers_dir.is_dir():
         raise SaveError(f"papersフォルダが見つかりません: {papers_dir}")
     validate_name(papers_dir, title)
 
     note = papers_dir / f"{title}.md"
     assets = papers_dir / "assets" / title
-    for target in (note, assets, assets / f"{title}.pdf"):
-        if target.exists():
-            raise SaveError(f"登録先が既に存在します: {target}")
-
-    requested_doi = normalize_doi(doi)
-    for existing_note in sorted(papers_dir.glob("*.md")):
-        frontmatter = read_frontmatter(existing_note)
-        match = CITEKEY_RE.search(frontmatter)
-        if match and (match.group("quoted") or match.group("plain")) == citekey:
-            raise SaveError(f"citekeyが既存ノートと衝突します: {existing_note}")
-        match = DOI_RE.search(frontmatter)
-        if requested_doi and match and normalize_doi(match.group("value")) == requested_doi:
-            raise SaveError(f"DOIが既存ノートと衝突します: {existing_note}")
+    if note.exists():
+        raise SaveError(f"登録先が既に存在します: {note}")
+    if assets.exists():
+        if not assets.is_dir() or any(path.is_file() for path in assets.rglob("*")):
+            raise SaveError(f"登録先が既に存在します: {assets}")
 
 
 def normalize_numbered_heading_level(line: str) -> str:
@@ -245,7 +220,7 @@ def save(args: argparse.Namespace) -> tuple[Path, Path, int]:
     paper_pdf, artifacts = validate_inputs(
         text, args.paper_pdf, args.artifacts_dir, args.sanitized_title
     )
-    check_conflicts(args.papers_dir, args.sanitized_title, args.citekey, args.doi)
+    check_conflicts(args.papers_dir, args.sanitized_title)
 
     final_note = args.papers_dir / f"{args.sanitized_title}.md"
     final_assets = args.papers_dir / "assets" / args.sanitized_title
@@ -253,11 +228,15 @@ def save(args: argparse.Namespace) -> tuple[Path, Path, int]:
     final_artifacts = final_assets / "artifacts"
     note_created = False
     assets_created = False
+    artifacts_created = False
     try:
         final_assets.parent.mkdir(exist_ok=True)
-        final_assets.mkdir()
-        assets_created = True
-        final_artifacts.mkdir()
+        assets_existed = final_assets.exists()
+        final_assets.mkdir(exist_ok=True)
+        assets_created = not assets_existed
+        artifacts_existed = final_artifacts.exists()
+        final_artifacts.mkdir(exist_ok=True)
+        artifacts_created = not artifacts_existed
         shutil.copy2(paper_pdf, final_pdf)
         for artifact in artifacts:
             shutil.copy2(artifact, final_artifacts / artifact.name)
@@ -273,6 +252,10 @@ def save(args: argparse.Namespace) -> tuple[Path, Path, int]:
     except Exception:
         if note_created and final_note.exists():
             final_note.unlink()
+        if final_pdf.exists():
+            final_pdf.unlink()
+        if artifacts_created and final_artifacts.exists():
+            shutil.rmtree(final_artifacts)
         if assets_created and final_assets.exists():
             shutil.rmtree(final_assets)
         raise
@@ -280,8 +263,8 @@ def save(args: argparse.Namespace) -> tuple[Path, Path, int]:
 
 
 def run(args: argparse.Namespace) -> int:
-    check_conflicts(args.papers_dir, args.sanitized_title, args.citekey, args.doi)
     if args.check_only:
+        check_conflicts(args.papers_dir, args.sanitized_title)
         print("Registration conflicts: none")
         return 0
     final_note, final_pdf, artifact_count = save(args)
