@@ -1,6 +1,6 @@
 # agent-skills
 
-個人用の AI エージェントスキル集である。学術論文の執筆・校正・引用文作成・保存、文章要約、フロントエンドデザイン、プロッターハードウェア操作に関するワークフローをまとめている。
+個人用の AI エージェントスキル集である。学術論文の執筆・校正・引用文作成・保存、文章要約、フロントエンドデザイン、After Effects 操作、プロッターハードウェア操作に関するワークフローをまとめている。
 
 各スキルは、ディレクトリ内の `SKILL.md` を中心に構成される。必要に応じて `references/`、`scripts/`、`tests/`、`agents/` を備える。
 
@@ -8,6 +8,7 @@
 
 | スキル | 用途 |
 | --- | --- |
+| [aftereffects-mcp](./skills/aftereffects-mcp/) | `@kumoproductions/mcp-aftereffects` を通じて、開いている After Effects プロジェクトのコンポジション、レイヤー、テキスト、図形、エフェクト、マスク、キーフレーム、フッテージ、レンダーキューを安全に確認・操作する。 |
 | [frontend-design](./skills/frontend-design/) | 既存の Web サイトやアプリの機能・情報構造を保ったまま、余白・無彩色・1px border・控えめな角丸を基調とした UI に差し替える。Tailwind CSS と shadcn/ui を前提とする。 |
 | [ochiai-summary](./skills/ochiai-summary/) | 入力された文章・メモ・表・データを、内容の範囲内で落合フォーマットの6見出しに要約する。 |
 | [paper-english-proofreading](./skills/paper-english-proofreading/) | 学術論文の英文校正、または日本語原文からの英訳を行う。投稿先・分野の慣習、LaTeX 形式、指定用語を保持する。 |
@@ -20,6 +21,8 @@
 
 ```text
 skills/
+├── aftereffects-mcp/
+│   └── agents/
 ├── frontend-design/
 ├── ochiai-summary/
 ├── paper-english-proofreading/
@@ -46,6 +49,7 @@ skills/
 
 ## 注意事項
 
+- `aftereffects-mcp` は After Effects と `@kumoproductions/mcp-aftereffects` サーバーが利用可能な環境で使用する。操作前にプロジェクトの状態を確認し、変更後は読み戻しやプレビューで検証する。
 - `paper-save` は Docling と Obsidian vault を使用する。保存先やメタデータを確認してから実行する。
 - `plotter-hardware` は実機を動かしたり、ソレノイドを作動させたりするため、状態確認と対象操作の明示的な依頼が必要である。
 - ハードウェア操作の詳細なエンドポイント、座標範囲、実行条件は各スキルの `references/` と `SKILL.md` を正本とする。

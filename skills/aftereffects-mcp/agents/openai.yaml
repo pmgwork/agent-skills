@@ -1,0 +1,4 @@
+interface:
+  display_name: "After Effects MCP"
+  short_description: "Safe After Effects automation via MCP"
+  default_prompt: "Use $aftereffects-mcp to inspect or safely edit the open After Effects project."
