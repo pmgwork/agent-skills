@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan to HTML"
+  short_description: "Convert project plans into readable HTML pages"
+  default_prompt: "Use $plan-to-html to turn this project plan into a self-contained HTML page."
