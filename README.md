@@ -10,7 +10,7 @@
 | --- | --- |
 | [After Effects MCP](./skills/aftereffects-mcp/SKILL.md) | `@kumoproductions/mcp-aftereffects` を通じて、開いている After Effects プロジェクトのコンポジション、レイヤー、テキスト、図形、エフェクト、マスク、キーフレーム、フッテージ、レンダーキューを安全に確認・操作する。 |
 | [Blender MCP](./skills/blender-mcp/SKILL.md) | Blender MCP を通じて、Blender シーンや `.blend` ファイルを段階的に検査し、最小限の編集、スクリーンショット・レンダーによる検証を行う。 |
-| [frontend-design](./skills/frontend-design/) | 既存の Web サイトやアプリの機能・情報構造を保ったまま、余白・無彩色・1px border・控えめな角丸を基調とした UI に差し替える。Tailwind CSS と shadcn/ui を前提とする。 |
+| [frontend-design](./skills/frontend-design/SKILL.md) | 既存の Web サイトやアプリの機能・情報構造を保ったまま、余白・無彩色・1px border・控えめな角丸を基調とした UI に差し替える。Tailwind CSS と shadcn/ui を前提とする。 |
 | [plan-to-html](./skills/plan-to-html/SKILL.md) | Plan、作業計画、ロードマップを、進捗・依存関係・リスク・検証項目を含む自己完結型 HTML に変換する。 |
 | [ochiai-summary](./skills/ochiai-summary/) | 入力された文章・メモ・表・データを、内容の範囲内で落合フォーマットの6見出しに要約する。 |
 | [paper-english-proofreading](./skills/paper-english-proofreading/) | 学術論文の英文校正、または日本語原文からの英訳を行う。投稿先・分野の慣習、LaTeX 形式、指定用語を保持する。 |

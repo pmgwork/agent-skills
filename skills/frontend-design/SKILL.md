@@ -7,83 +7,83 @@ description: 既存の Web サイトやアプリの UI を、機能・情報構�
 
 このスキルを使うときは、既存UIの機能、導線、情報構造を保ったまま、視覚表現を `references/design.md` の基準へ差し替える。既存の見た目を微修正するのではなく、色、余白、タイポグラフィ、border、motion、カード表現、画像の扱いを置き換える。
 
-`references/design.md` を必ず読み、そこに書かれたトークン、サイズ、レイアウト、コンポーネント、モーション、避けることを基準に実装する。
+実装前に必ず `references/design.md` を読み、そこに書かれたトークン、サイズ、レイアウト、コンポーネント、モーション、避けることを基準に実装する。Tailwind CSS の設計・トークンは `$tailwind-4-docs` を、shadcn/ui の追加・調整は `$shadcn` を併用する。
 
-基本実装は Tailwind CSS と shadcn/ui を使う。Tailwind CSS の設計・トークン・utility の扱いは `$tailwind-4-docs` を、shadcn/ui の追加・調整・修正は `$shadcn` を併用する。
+## 処理フロー
 
-## 実装前に確認すること
-
-- 既存の機能、導線、表示情報を確認する。
-- 置き換える対象の色、余白、タイポグラフィ、border、radius、shadow、背景、motion を確認する。
-- 既存の CSS custom properties を `references/design.md` の role に対応づける。
-- 既存のページまたはコンポーネントのクラス命名を確認する。
+### 1. 現状分析とトークンマッピング
+- 既存の機能、導線、表示テキスト、使用可能な実画像を確認する。
+- 既存の CSS custom properties やカラー定義を `references/design.md` のカラートークン（`primary`、`background`、`surface-muted`、`text`、`text-muted`、`border-strong`、`border-subtle`）に対応付ける。
 - Tailwind CSS と shadcn/ui の導入状況を確認する。
-- Tailwind CSS や shadcn/ui の具体的な使い方が必要な場合は、該当スキルを併用する。
-- 使用できる実画像、プロジェクト画像、本文、メタ情報を確認する。
 
-## 実装ルール
-
-- 既存の機能、導線、情報構造は保つ。
-- 既存の配色、影、装飾背景、カード表現、強いアクセントは `references/design.md` の内容へ置き換える。
-- `references/design.md` にない色、フォントサイズ、line-height、tracking、weight、container 幅、motion 値は追加しない。
-- CSS custom properties は、`primary`、`background`、`surface-muted`、`text`、`text-muted`、`border-strong`、`border-subtle` を基準に整理する。
+### 2. トークン・基盤スタイルの適用
+- `references/design.md` のカラートークン、フォント、イージングを CSS custom properties または Tailwind v4 `@theme` に定義する。
+- フォント CDN（`https://cdn.jsdelivr.net/npm/gen-interface-jp@0.8.0/cdn/all.css` 等）を `index.html` または `globals.css` で読み込む。
+- Light / Dark モード切替の仕組みと `prefers-color-scheme` 連携を整備する。
 - 追加するスタイルは、ページまたはコンポーネントのクラス名にスコープする。
-- タイポグラフィは `references/design.md` の `text-h1`、`text-h2`、`text-h3`、`text-body1`、`text-body2`、`text-caption` に置き換える。
-- レイアウトは `references/design.md` の Tailwind 前提に合わせる。
-- 色、罫線、装飾を足す前に、余白と無彩色の面で階層を作る。
-- 作品画像、実画像、本文、メタ情報を主要なビジュアル素材として使う。
 
-## 禁止
+### 3. コンポーネントとレイアウトの段階的差し替え
+- **色・面・境界線**: 派手な配色、グラデーション、強い影、太い罫線を排除し、余白・無彩色・1px border・控えめな角丸（`rounded-md` 以下）へ置き換える。
+- **タイポグラフィ**: `references/design.md` の `text-h1` 〜 `text-caption` のトークンに置き換える。
+- **レイアウト**: コンテナ幅を `max-w-screen-*` に合わせ、モバイルは `px-5`、デスクトップは `px-20`、セクション間は `gap-20`〜`gap-32` の広い余白を取る。一覧は最大2カラムとする。
+- **コンポーネント**: shadcn/ui コンポーネントはそのまま使い、見た目はトークン上書きで調整する。アイコンは `lucide` を基本とする。
+- **ビジュアル素材**: 抽象的な装飾SVGやオーブ背景を排し、実画像、本文、メタデータを主役にする。
 
-- `references/design.md` にないアクセントカラー。
-- `references/design.md` にないフォントサイズ。
-- `references/design.md` にない背景階層。
-- `references/design.md` の「避けること」に該当する表現。
-
-## Tailwind CSS / shadcn/ui
-
-- Tailwind CSS の設計・トークン・utility の扱いで迷う場合は `$tailwind-4-docs` を使う。
-- shadcn/ui の追加・調整・修正で迷う場合は `$shadcn` を使う。
-- このスキルには Tailwind CSS や shadcn/ui の細かい使い方を増やさない。
-
-## DESIGN.md
-
+### 4. DESIGN.md の作成・更新
 - デザイン差し替え後、作業対象プロジェクトのルートに `DESIGN.md` を作成または更新する。
 - 既存の `DESIGN.md` がある場合は新規作成せず、実装後の内容に合わせて更新する。
-- `DESIGN.md` には、実際に適用した値とルールだけを書く。
-- 見出しは、`色`、`タイポグラフィ`、`レイアウト`、`コンポーネント`、`モーション`、`実装メモ`、`避けること` を基本にする。
-- `references/design.md` の内容をそのまま写すのではなく、対象プロジェクトに実際に入れた値とクラスに合わせて書く。
-- 実装していないコンポーネント、使っていないトークン、未採用の案は書かない。
-- 不必要なキャプションやサブセクションは追加しない。
+- `DESIGN.md` には、実際に適用した値、クラス、ルールだけを記録する（未採用の案や未使用トークンは書かない）。
 
-基本の雛形:
+### 5. 検証
+- 開発サーバーが必要なアプリではローカル開発サーバーを起動し、静的HTMLの場合はファイルパスを確認する。
+- デスクトップ幅（PC: 1280px以上）とモバイル幅（SP: 375px前後）の表示を確認する。
+- ブラウザやスクリーンショットで、要素の重なり、文字切れ、コントラスト不足、読みにくい操作部品、欠けた画像、過剰な装飾の残存がないか確認する。
 
-```md
+### 6. 完了報告
+- 変更したファイル一覧、実施した検証内容、残っている制限事項だけを簡潔に報告する。
+
+## 禁止事項
+
+- `references/design.md` に未定義の色、フォントサイズ、line-height、tracking、weight、container 幅、motion 値の追加。
+- `references/design.md` の「避けること」に該当する表現全般。
+
+## DESIGN.md テンプレート
+
+作業対象プロジェクトのルートに作成する `DESIGN.md` は、以下の構成を基本とする。
+
+```markdown
 # DESIGN.md
 
 ## 色
+- `primary`: `#28a8d0` (アクセント・フォーカス)
+- `background`: Light `#f2f2f2` / Dark `#121212`
+- `surface-muted`: Light `#f0f0f0` / Dark `#161616`
+- `text`: Light `#121212` / Dark `#e6e6e6`
+- `text-muted`: Light `#8f8f8f` / Dark `#727272`
+- `border-strong`: Light `#cccccc` / Dark `#404040`
+- `border-subtle`: Light `#e6e6e6` / Dark `#202020`
 
 ## タイポグラフィ
+- Font Family: `Gen Interface JP`, `Gen Interface JP Display` (CDN: `https://cdn.jsdelivr.net/npm/gen-interface-jp@0.8.0/cdn/all.css`)
+- 見出し: `text-h1` (SP: 20px / PC: 24px), `text-h2` (SP: 16px / PC: 18px), `text-h3` (SP: 14px / PC: 15px)
+- 本文: `text-body1` (13px/14px), `text-body2` (12px/13px), `text-caption` (10px/11px)
 
 ## レイアウト
+- Container: `max-w-screen-xl` (通常), `max-w-screen-md` (本文・フォーム)
+- Padding: SP `px-5` / PC `px-20`
+- Spacing: `gap-20` 〜 `gap-32`
 
 ## コンポーネント
+- Border: 1px border (`border-subtle` / `border-strong`)
+- Radius: `rounded-md` 以下
+- Icons: `lucide-react`
 
 ## モーション
+- Easing: `--ease-out` (登場: 0.6s〜1.5s), `--ease-in` (退場: 0.2s〜0.4s), `--ease-in-out` (遷移: 0.2s〜0.3s)
 
 ## 実装メモ
+- (対象プロジェクトで適用した具体的なCSS設計・スコープ・特記事項)
 
 ## 避けること
+- (プロジェクト固有の禁止事項や遵守事項)
 ```
-
-## 検証
-
-- 開発サーバーが必要なアプリでは、実装後にローカル開発サーバーを起動し、URLを伝える。
-- 静的HTMLだけで動く場合は、ローカルファイルのパスを伝える。
-- 重要なフロントエンド変更の後は、ブラウザで確認する。
-- デスクトップ幅とモバイル幅を1つ以上ずつ確認する。
-- スクリーンショットで、重なり、文字切れ、読みにくい操作部品、欠けた画像、配色の偏りを確認する。
-
-## 完了報告
-
-変更したファイル、実施した検証、残っている制限事項だけを報告する。
