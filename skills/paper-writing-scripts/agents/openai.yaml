@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper Writing Scripts"
+  short_description: "論理構造・段落構成・学術的文体を整えて推敲"
+  default_prompt: "$paper-writing-scripts を使って、日本語論文の文章を推敲・改善してください。"

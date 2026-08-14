@@ -28,16 +28,23 @@ skills/
 ├── blender-mcp/
 │   └── agents/
 ├── frontend-design/
-├── plan-to-html/
+│   ├── agents/
+│   └── references/
 ├── ochiai-summary/
+│   └── agents/
 ├── paper-english-proofreading/
+│   └── agents/
 ├── paper-references-citation/
+│   └── agents/
 ├── paper-save/
 │   ├── agents/
 │   ├── references/
 │   ├── scripts/
 │   └── tests/
 ├── paper-writing-scripts/
+│   └── agents/
+├── plan-to-html/
+│   └── agents/
 └── plotter-hardware/
     ├── agents/
     ├── references/

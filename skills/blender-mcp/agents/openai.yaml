@@ -1,4 +1,4 @@
 interface:
   display_name: "Blender MCP"
-  short_description: "Blender scenesを安全に検査・編集・検証"
-  default_prompt: "Use $blender-mcp to inspect or edit the connected Blender scene safely."
+  short_description: "Blenderシーンを安全に検査・編集・レンダリング検証"
+  default_prompt: "$blender-mcp を使って、Blenderシーンを安全に確認・編集してください。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper English Proofreading"
+  short_description: "学術分野や投稿先の慣習に合わせた英文校正・英訳"
+  default_prompt: "$paper-english-proofreading を使って、論文の英文校正または英訳を行ってください。"

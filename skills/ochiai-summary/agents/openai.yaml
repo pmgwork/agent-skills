@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ochiai Summary"
+  short_description: "文章やデータを落合フォーマットの6見出しで日本語要約"
+  default_prompt: "$ochiai-summary を使って、入力内容を落合フォーマットで要約してください。"

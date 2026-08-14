@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Design"
+  short_description: "余白・無彩色・1px borderを基調としたUIへ差し替え"
+  default_prompt: "$frontend-design を使って、既存のUIの機能や導線を保ったままデザインを差し替えてください。"

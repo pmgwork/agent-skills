@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper References Citation"
+  short_description: "論文抄録・本文から関連研究で使える引用文を作成"
+  default_prompt: "$paper-references-citation を使って、この論文の引用文を作成してください。"
