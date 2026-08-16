@@ -1,4 +1,0 @@
-interface:
-  display_name: "Plan to HTML"
-  short_description: "Planや作業計画を自己完結型HTMLファイルへ変換"
-  default_prompt: "$plan-to-html を使って、作業計画をレスポンシブで印刷可能なHTMLファイルへ変換してください。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Doc to HTML"
+  short_description: "文書をインラインモック・図解付きの自己完結型HTMLへ変換"
+  default_prompt: "$doc-to-html を使って、この仕様・提案内容をインラインモックや図解を含んだ美しい自己完結型HTMLドキュメントとして出力してください。"
