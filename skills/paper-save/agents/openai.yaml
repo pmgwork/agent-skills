@@ -1,4 +1,0 @@
-interface:
-  display_name: "Paper Save"
-  short_description: "論文本文をAI整形し原本・画像・BibTeXと保存"
-  default_prompt: "$paper-save を使って、この論文PDFをObsidian vaultへ保存してください。"

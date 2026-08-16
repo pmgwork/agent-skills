@@ -1,6 +1,6 @@
 # Plotter Hardware API reference
 
-対象実装: `/Users/yuto/Documents/GitHub/laboratory/plotter-hardware`。既定 URL は `http://localhost:8080`。最終的なレスポンスフィールド、制約、HTTP ステータスはプロジェクトの `openapi_spec.py` または起動中の `GET /openapi.json` を優先する。
+Plotter Hardware REST API 仕様書。既定 URL は `http://localhost:8080`（環境変数 `PLOTTER_HARDWARE_URL` または `--base-url` で変更可能）。最終的なレスポンスフィールド、制約、HTTP ステータスはプロジェクトの `openapi_spec.py` または起動中の `GET /openapi.json` を優先する。
 
 ## AxiDraw API
 
@@ -124,8 +124,10 @@ SVG の DTD、entity、script、外部参照は拒否される。実行前に内
 ## 起動と確認
 
 ```sh
-cd /Users/yuto/Documents/GitHub/laboratory/plotter-hardware
-./.venv/bin/python main.py --no-status
+# サーバー起動例（サーバーリポジトリルートにて）
+python3 main.py --no-status
+
+# 動作確認（既定: http://localhost:8080）
 curl http://localhost:8080/axiDraw/
 curl http://localhost:8080/axiDraw/status
 curl http://localhost:8080/actuators/config
