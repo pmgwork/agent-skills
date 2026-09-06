@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Save paper note, PDF, and image artifacts to Obsidian vault in a single atomic step.
-"""
+"""Save a paper note, PDF, and image artifacts without overwriting existing work."""
 
 from __future__ import annotations
 
@@ -19,6 +17,10 @@ MARKDOWN_IMAGE_RE = re.compile(
     r"(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)"
 )
 FENCE_RE = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+IMAGE_SUFFIXES = {
+    ".avif", ".bmp", ".gif", ".heic", ".heif", ".jpeg", ".jpg",
+    ".png", ".svg", ".tif", ".tiff", ".webp",
+}
 
 
 class PaperSaveError(RuntimeError):
@@ -67,15 +69,14 @@ def sanitize_title(title: str) -> str:
 
 
 def check_conflicts(papers_dir: Path, sanitized_title: str) -> None:
-    """Check if destination note or non-empty assets directory already exists."""
-    papers_dir.mkdir(parents=True, exist_ok=True)
+    """Check destinations without creating or changing anything."""
     note_path = papers_dir / f"{sanitized_title}.md"
     assets_dir = papers_dir / "assets" / sanitized_title
 
-    if note_path.exists():
+    if note_path.exists() or note_path.is_symlink():
         raise PaperSaveError(f"Target note already exists: {note_path}")
-    if assets_dir.exists() and any(assets_dir.iterdir()):
-        raise PaperSaveError(f"Target assets directory already exists and is not empty: {assets_dir}")
+    if assets_dir.exists() or assets_dir.is_symlink():
+        raise PaperSaveError(f"Target assets directory already exists: {assets_dir}")
 
 
 def transform_and_collect_images(
@@ -117,7 +118,10 @@ def transform_and_collect_images(
     def assign(source_path: Path) -> str:
         source_path = source_path.resolve()
         if source_path not in assignments:
-            filename = f"image_{len(assignments) + 1:03d}.png"
+            suffix = source_path.suffix.lower()
+            if suffix not in IMAGE_SUFFIXES:
+                raise PaperSaveError(f"Unsupported image format: {source_path}")
+            filename = f"image_{len(assignments) + 1:03d}{suffix}"
             assignments[source_path] = filename
             ordered_images.append((source_path, filename))
         return assignments[source_path]
@@ -130,15 +134,19 @@ def transform_and_collect_images(
 
     # Line-by-line transformation ignoring code blocks
     output_lines: list[str] = []
-    active_fence: str | None = None
+    active_fence: tuple[str, int] | None = None
 
     for line in text.splitlines(keepends=True):
         fence_match = FENCE_RE.match(line)
         if fence_match:
             fence = fence_match.group("fence")
             if active_fence is None:
-                active_fence = fence[0]
-            elif active_fence == fence[0]:
+                active_fence = (fence[0], len(fence))
+            elif (
+                active_fence[0] == fence[0]
+                and len(fence) >= active_fence[1]
+                and not line[fence_match.end():].strip()
+            ):
                 active_fence = None
             output_lines.append(line)
             continue
@@ -147,10 +155,10 @@ def transform_and_collect_images(
             line = MARKDOWN_IMAGE_RE.sub(replace_image_match, line)
         output_lines.append(line)
 
-    # If there are unused PNG artifacts, keep them indexed too
+    # Keep every supported image artifact, including nested and unreferenced files.
     if artifacts_dir and artifacts_dir.is_dir():
-        for artifact in sorted(artifacts_dir.glob("*.png")):
-            if artifact.is_file():
+        for artifact in sorted(artifacts_dir.rglob("*")):
+            if artifact.is_file() and artifact.suffix.lower() in IMAGE_SUFFIXES:
                 assign(artifact)
 
     return "".join(output_lines), ordered_images
@@ -163,7 +171,13 @@ def save_paper(
     markdown_path: Path,
     artifacts_dir: Path | None,
 ) -> tuple[Path, Path, int]:
-    """Atomically save note, PDF, and artifacts to Obsidian vault."""
+    """Save a paper while reserving its assets directory exclusively.
+
+    The assets directory is reserved with an atomic mkdir, and the note is
+    published only after every asset has been copied. The note and assets are
+    separate filesystem paths, so the complete operation is not one atomic
+    filesystem transaction.
+    """
     if not vault_root.is_dir():
         raise PaperSaveError(f"Vault root directory not found: {vault_root}")
     if not pdf_path.is_file() or pdf_path.stat().st_size == 0:
@@ -173,8 +187,6 @@ def save_paper(
 
     sanitized = sanitize_title(title)
     papers_dir = vault_root / "papers"
-    check_conflicts(papers_dir, sanitized)
-
     raw_text = markdown_path.read_text(encoding="utf-8")
     transformed_text, images = transform_and_collect_images(
         raw_text,
@@ -189,35 +201,49 @@ def save_paper(
     final_pdf = final_assets / f"{sanitized}.pdf"
     final_artifacts = final_assets / "artifacts"
 
-    created_paths: list[Path] = []
-    try:
-        final_assets.mkdir(parents=True, exist_ok=True)
-        created_paths.append(final_assets)
+    papers_dir.mkdir(parents=True, exist_ok=True)
+    (papers_dir / "assets").mkdir(exist_ok=True)
+    check_conflicts(papers_dir, sanitized)
 
-        final_artifacts.mkdir(parents=True, exist_ok=True)
-        created_paths.append(final_artifacts)
+    reserved_assets = False
+    note_published = False
+    try:
+        # mkdir without exist_ok is the cross-process reservation for this title.
+        final_assets.mkdir()
+        reserved_assets = True
+
+        # Recheck after reservation to close the note-creation race.
+        if final_note.exists() or final_note.is_symlink():
+            raise PaperSaveError(f"Target note already exists: {final_note}")
+
+        final_artifacts.mkdir()
 
         # Copy PDF
         shutil.copy2(pdf_path, final_pdf)
-        created_paths.append(final_pdf)
 
         # Copy Images
         for src, dest_name in images:
             dest_file = final_artifacts / dest_name
             shutil.copy2(src, dest_file)
-            created_paths.append(dest_file)
 
-        # Write Markdown note
-        final_note.write_text(transformed_text, encoding="utf-8")
-        created_paths.append(final_note)
+        # Write out of sight, then publish with an atomic, no-overwrite hard link.
+        temporary_note = final_assets / ".note.md.tmp"
+        with temporary_note.open("x", encoding="utf-8") as note_file:
+            note_file.write(transformed_text)
+        os.link(temporary_note, final_note)
+        note_published = True
+        try:
+            temporary_note.unlink()
+        except OSError:
+            # The published note is complete; a hidden duplicate is harmless.
+            pass
 
     except Exception as exc:
-        # Rollback on any failure
-        for path in reversed(created_paths):
-            if path.is_file():
-                path.unlink(missing_ok=True)
-            elif path.is_dir() and not any(path.iterdir()):
-                path.rmdir()
+        # Only remove the directory that this invocation reserved itself.
+        if reserved_assets and not note_published:
+            shutil.rmtree(final_assets)
+        if isinstance(exc, PaperSaveError):
+            raise
         raise PaperSaveError(f"Failed to save paper note: {exc}") from exc
 
     return final_note, final_pdf, len(images)

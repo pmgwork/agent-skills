@@ -65,9 +65,9 @@ skills/
 # 特定のプロジェクト（例: ./.agents/skills）に同期
 ./sync.sh -t ./.agents/skills
 
-# git commit / merge / checkout 時に自動で sync を実行するフックを登録
-./sync.sh --install-hook
 ```
+
+同期先に同名のファイル・ディレクトリ・別のリンクがある場合は保持し、競合を報告して終了コード1を返す。`-t` 指定時は指定先だけを変更し、エージェント用エイリアスは作成しない。`--install-hook` は未対応。
 
 ### スキルの呼び出し
 

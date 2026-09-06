@@ -92,7 +92,7 @@ python3 scripts/plotter_hardware.py solenoid-toggle --execute
 python3 scripts/plotter_hardware.py dispose --execute
 ```
 
-GPIO を再設定するときは `port` と `pin` を必ず同時に指定する。`default_state` は `LOW` または `HIGH`。パルスの `duration` は正の秒数で、省略時はサーバー既定の 0.5 秒。連続パルスや反復操作は回数・間隔を明示し、1回ずつ結果を確認して異常応答で停止する。
+`pulse` と `solenoid-toggle` は `--port`、`--pin`、`--default-state` を受け付ける。GPIO を再設定するときは `port` と `pin` を必ず同時に指定する。`default_state` は `LOW` または `HIGH`。パルスの `duration` は正の秒数で、省略時はサーバー既定の 0.5 秒。連続パルスや反復操作は回数・間隔を明示し、1回ずつ結果を確認して異常応答で停止する。
 
 `/servo/up`、`/servo/down`、`/servo/status` は互換用の B1 イレーサー操作である。新しい機構単位の操作には `/actuators/{pen|eraser|solenoid}/up|down` を使う。`/actuators/servo/...` は使わない。
 

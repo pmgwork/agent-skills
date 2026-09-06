@@ -27,7 +27,7 @@ description: 論文PDFをDoclingで抽出し、原文を整形して全画像、
           ├── {SanitizedTitle}.pdf
           └── artifacts/
               ├── image_001.png
-              └── image_002.png
+              └── image_002.jpg
   ```
 
 ---
@@ -65,7 +65,7 @@ docling convert "<input.pdf>" \
      --markdown "$work_dir/<PDF名>.md" \
      --check-only
    ```
-   ※ 既存ノートまたは同名の画像フォルダが存在する場合は、上書きせず処理を中断する。
+   ※ 既存ノートまたは同名の画像フォルダ（空フォルダを含む）が存在する場合は、上書きせず処理を中断する。`--check-only` はファイルやディレクトリを作成しない。
 
 ### 3. ノートの組み立て
 
@@ -116,6 +116,7 @@ figure: "assets/{SanitizedTitle}/artifacts/image_001.png"
 ### 4. Vaultへの保存実行
 
 統合スクリプトを実行し、画像の採番・Obsidianリンク置換・PDFコピー・Vault保存を一括で行う。
+画像はサブディレクトリも含めて収集し、元の形式に応じた拡張子を保持する（例: `image_001.png`, `image_002.jpg`）。
 
 ```bash
 python3 scripts/save_paper.py \
@@ -124,6 +125,8 @@ python3 scripts/save_paper.py \
   --markdown "$work_dir/note.md" \
   --docling-artifacts "$work_dir/<PDF名>_artifacts"
 ```
+
+同一タイトルの保存先は排他的に確保され、既存ファイルは上書きしない。ノートはPDFと画像のコピー完了後に公開される。ただし、ノートとアセットは別パスなので、保存全体が単一のファイルシステムトランザクションになるわけではない。途中で異常終了した場合、ノート公開前のアセット用ディレクトリが残ることがあり、その場合は競合として停止する。
 
 ### 5. 完了報告
 

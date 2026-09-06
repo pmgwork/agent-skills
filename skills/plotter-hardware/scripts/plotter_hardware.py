@@ -115,7 +115,6 @@ def build_parser() -> argparse.ArgumentParser:
         "move-default",
         "servo-up",
         "servo-down",
-        "solenoid-toggle",
         "dispose",
     ):
         child = subparsers.add_parser(command)
@@ -132,12 +131,14 @@ def build_parser() -> argparse.ArgumentParser:
         child.add_argument("--tool", required=True, choices=actuator_tools)
         add_execute(child)
 
-    pulse = subparsers.add_parser("pulse")
-    pulse.add_argument("--duration", type=positive_float)
-    pulse.add_argument("--port")
-    pulse.add_argument("--pin")
-    pulse.add_argument("--default-state", choices=("LOW", "HIGH"))
-    add_execute(pulse)
+    for command in ("pulse", "solenoid-toggle"):
+        child = subparsers.add_parser(command)
+        if command == "pulse":
+            child.add_argument("--duration", type=positive_float)
+        child.add_argument("--port")
+        child.add_argument("--pin")
+        child.add_argument("--default-state", choices=("LOW", "HIGH"))
+        add_execute(child)
 
     draw = subparsers.add_parser("draw-to")
     draw.add_argument("--x", required=True, type=finite_float)
@@ -303,14 +304,15 @@ def main() -> int:
         )
 
     body: dict[str, Any] = {}
+    path = JSON_WRITE_PATHS[args.command]
     if args.command == "move-to":
         body = {"x": args.x, "y": args.y}
     elif args.command in {"actuator-up", "actuator-down"}:
         path = JSON_WRITE_PATHS[args.command].format(tool=args.tool)
-    elif args.command == "pulse":
+    elif args.command in {"pulse", "solenoid-toggle"}:
         if (args.port is None) != (args.pin is None):
             parser.error("--port and --pin must be specified together")
-        if args.duration is not None:
+        if args.command == "pulse" and args.duration is not None:
             body["duration"] = args.duration
         if args.port is not None:
             body["port"] = args.port
