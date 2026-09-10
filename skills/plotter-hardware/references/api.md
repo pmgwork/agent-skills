@@ -1,32 +1,44 @@
 # Plotter Hardware API reference
 
-Plotter Hardware REST API 仕様書。既定 URL は `http://localhost:8080`（環境変数 `PLOTTER_HARDWARE_URL` または `--base-url` で変更可能）。最終的なレスポンスフィールド、制約、HTTP ステータスはプロジェクトの `openapi_spec.py` または起動中の `GET /openapi.json` を優先する。
+既定 URL は `http://localhost:8080`。現行 API は AxiDraw と UUNA TEK DrawCore に共通の `/plotter` を使う。旧 `/axiDraw/*` は 404 になる。
 
-## AxiDraw API
+## Plotter API
 
 | Method | Path | Body | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/axiDraw/` | — | サービス情報、`available`、`connected` |
-| `POST` | `/axiDraw/connect` | `{}` | AxiDraw と GPIO 機構を初期化して接続 |
-| `POST` | `/axiDraw/disconnect` | `{}` | 機構を安全状態にして切断 |
-| `GET` | `/axiDraw/status` | — | 接続状態、現在位置、可動範囲 |
-| `POST` | `/axiDraw/move_to_default` | `{}` | ソフトウェア原点 `(0, 0)` へ移動 |
-| `POST` | `/axiDraw/home` | `{}` | `walk_home` でモーター原点へ戻し、座標を再同期 |
-| `POST` | `/axiDraw/move_to` | `{"x": 50.0, "y": 30.0}` | 絶対座標へ移動（mm） |
+| `GET` | `/plotter/` | — | `available`、`connected`、`type`、`capabilities.tools` |
+| `POST` | `/plotter/connect` | `{}` | 起動時に選択されたプロッタへ接続 |
+| `POST` | `/plotter/disconnect` | `{}` | 安全状態にして切断 |
+| `GET` | `/plotter/status` | — | 現在位置と可動範囲 |
+| `POST` | `/plotter/move_to_default` | `{}` | 追跡座標 `(0, 0)` へ移動 |
+| `POST` | `/plotter/home` | `{}` | バックエンド固有のホームを実行し座標を再同期 |
+| `POST` | `/plotter/move_to` | `{"x": 50.0, "y": 30.0}` | 絶対座標へ移動（mm） |
 
-`/axiDraw/home` はリミットスイッチを使わない。`move_to_default` は物理ホーミングではない。`move_to` 実行前に `status.bounds` を確認する。
+`type` は `axidraw` または `uuna_tek`。UUNA TEK はサーバー起動時の USB 検出で優先選択され、API 操作だけでは別バックエンドへ切り替えられない。
+
+`home` の応答には `homing_method` と `uses_limit_switch` が含まれる。AxiDraw は `walk_home`／`false`、UUNA TEK は `$H`／`null`。`move_to_default` は物理ホーミングではない。
+
+## Actuators and compatibility APIs
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/actuators/status` | 対応機構、状態、busy、active job |
+| `GET` | `/actuators/config` | ファイル由来の機構設定 |
+| `POST` | `/actuators/{tool}/up` | 離隔または OFF |
+| `POST` | `/actuators/{tool}/down` | 接触または ON |
+| `GET` | `/servo/status` | AxiDraw 内蔵サーボ状態 |
+| `POST` | `/servo/up`, `/servo/down` | AxiDraw 内蔵サーボ操作 |
+
+`tool` は `pen`、`eraser`、`solenoid`。AxiDraw では順に B3、B1、D2。UUNA TEK では `pen` だけが利用でき、他の機構と `/servo` の POST は 400、状態取得は `available: false` になる。
 
 ## Solenoid API
 
 | Method | Path | Body | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/solenoid/` | — | 初期化状態、ポート、ピン、既定状態、論理状態 |
-| `GET` | `/solenoid/status` | — | `available`、`ready`、接続、GPIO、状態 |
-| `POST` | `/solenoid/toggle` | `{}` または下記 | 現在状態を反転 |
-| `POST` | `/solenoid/pulse` | `{}` または下記 | 1回パルス |
-| `POST` | `/solenoid/dispose` | `{}` | GPIO を既定状態へ戻して解放 |
-
-再設定を伴う body の例:
+| `GET` | `/solenoid/`, `/solenoid/status` | — | 利用可否、接続、GPIO、状態 |
+| `POST` | `/solenoid/toggle` | `{}` または GPIO 設定 | 現在状態を反転 |
+| `POST` | `/solenoid/pulse` | `{}` または下記 | 1 回パルス |
+| `POST` | `/solenoid/dispose` | `{}` | 既定状態へ戻して解放 |
 
 ```json
 {
@@ -37,99 +49,50 @@ Plotter Hardware REST API 仕様書。既定 URL は `http://localhost:8080`（�
 }
 ```
 
-- `duration` は正の秒数。省略時は 0.5 秒。
-- `port` または `pin` を指定して再設定する場合は両方が必須。
-- `default_state` は `LOW` または `HIGH`。
-- `toggle` は `previous_state`、`state`、現在の GPIO 設定を返す。
-- AxiDraw 未接続時の `toggle`／`pulse` は実行できない。
-
-## Servo API
-
-| Method | Path | Body | Purpose |
-| --- | --- | --- | --- |
-| `POST` | `/servo/up` | `{}` | 互換用 B1 イレーサーを UP |
-| `POST` | `/servo/down` | `{}` | 互換用 B1 イレーサーを DOWN |
-| `GET` | `/servo/status` | — | 互換用サーボ状態 |
-
-機構を明示する新しい API は `/actuators/pen`、`/actuators/eraser`、`/actuators/solenoid` を使う。
-
-## Actuators API
-
-| Method | Path | Body | Purpose |
-| --- | --- | --- | --- |
-| `GET` | `/actuators/status` | — | B3 `pen`、B1 `eraser`、D2 `solenoid` の状態とジョブ状態 |
-| `GET` | `/actuators/config` | — | `config/axidraw_conf.py` の検証済み設定 |
-| `POST` | `/actuators/{tool}/up` | `{}` | `pen`／`eraser` を離隔、または solenoid を OFF |
-| `POST` | `/actuators/{tool}/down` | `{}` | `pen`／`eraser` を動作、または solenoid を ON |
-
-`tool` は `pen`、`eraser`、`solenoid` のいずれか。`servo` はこのパスの有効値ではない。GPIO やサーボピンは設定 API で確認し、固定値を推測しない。
+`duration` は正の秒数で、省略時は 0.5 秒。再設定では `port` と `pin` を同時に指定する。`default_state` は `LOW` または `HIGH`。この API は AxiDraw 専用である。
 
 ## Drawing API
 
-### 単発移動
-
-`POST /drawing/draw_to` は JSON を受け取る。
+`POST /drawing/draw_to`:
 
 ```json
 {
   "x": 50.0,
   "y": 30.0,
-  "pen": "eraser",
+  "pen": "pen",
   "delay": 0.5,
   "eraser_position_correction": true
 }
 ```
 
-- `x`、`y`、`pen` は必須。座標は mm。
-- `pen` は `pen`、`eraser`、`solenoid`、互換値 `servo`。
-- `delay` は非負秒数で既定値は 0.5。
-- `eraser_position_correction` は boolean、既定値は `true`。`eraser`／`servo` のみ補正。
-- 旧 `margin` パラメータは拒否される。
-- 移動失敗時も選択した機構を UP／OFF に戻す。
+- `x`、`y`、`pen` は必須。`pen` は `pen`、`eraser`、`solenoid`、旧別名 `servo`。
+- `delay` は機構固有の DOWN 待機に加える非負秒数。既定値は 0.5。
+- `eraser_position_correction` は既定で `true`。AxiDraw の `eraser`／`servo` のみに適用される。
+- 旧 `margin` は拒否される。
+- 事前に座標を検証し、成功・失敗のどちらでも選択機構を UP／OFF に戻す。
 
-### SVG ジョブ
-
-`POST /drawing/jobs` は multipart/form-data を受け取る。
-
-- `file`: UTF-8 SVG ファイル（必須、最大 10 MiB）
-- `pen`: `pen`、`eraser`、`solenoid`、`servo`（必須）
-- `options`: JSON オブジェクト文字列（任意）
-
-`options` の対応キー:
-
-```json
-{
-  "layer": 0,
-  "copies": 1,
-  "speed_pendown": 25,
-  "speed_penup": 50,
-  "reordering": 0,
-  "pen_down_delay": 0.5,
-  "model": 4,
-  "eraser_position_correction": true
-}
-```
-
-SVG の DTD、entity、script、外部参照は拒否される。実行前に内部検証・見積もりを行い、成功時は `202` と `job_id`、`preview`、`metadata`、`options` を返す。描画中の新規ジョブは `409`。
+SVG ジョブ:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/drawing/` または `/drawing/status` | 描画層、各 pen の状態、active job |
-| `POST` | `/drawing/jobs` | 非同期 SVG 描画を開始 |
-| `GET` | `/drawing/jobs/{job_id}` | ジョブ状態、結果、エラー |
+| `GET` | `/drawing/`, `/drawing/status` | 描画層、各 tool、active job |
+| `POST` | `/drawing/jobs` | multipart で非同期 SVG 描画を開始 |
+| `GET` | `/drawing/jobs/{job_id}` | ジョブ状態を取得 |
 | `POST` | `/drawing/jobs/{job_id}/cancel` | 実行中ジョブをキャンセル |
 
-ジョブ状態の終端値は `completed`、`failed`、`cancelled`。開始後は `job_id` を保存し、状態を再取得する。キャンセル済み・完了済みジョブへのキャンセルは `409`。
+`POST /drawing/jobs` の multipart フィールド:
 
-## 起動と確認
+- `file`: UTF-8 SVG、必須、最大 10 MiB。
+- `pen`: 必須。UUNA TEK は `pen` のみ。
+- `options`: 任意の JSON オブジェクト文字列。対応キーは `layer`、`copies`、`speed_pendown`、`speed_penup`、`reordering`、`pen_down_delay`、`model`、`eraser_position_correction`。
 
-```sh
-# サーバー起動例（サーバーリポジトリルートにて）
-python3 main.py --no-status
+DTD、entity、script、外部参照は拒否される。成功時は 202 と `job_id`、`preview`、`metadata`、`options` が返る。ジョブ状態は `pending`、`running`、`cancelling`、`completed`、`failed`、`cancelled`。同時操作は 409 になり得る。
 
-# 動作確認（既定: http://localhost:8080）
-curl http://localhost:8080/axiDraw/
-curl http://localhost:8080/axiDraw/status
-curl http://localhost:8080/actuators/config
-curl http://localhost:8080/openapi.json
-```
+## 代表的なエラー境界
+
+- 未対応 tool や未接続など、要求を実行できない場合: 400。
+- 描画中・別操作中、既に終端状態のジョブをキャンセルする場合: 409。
+- 接続・切断に失敗した場合: 503。
+- ハードウェア実行中の例外: 500。
+
+レスポンス本文の `error` を確認する。OpenAPI と実装が食い違う場合は、起動中のレスポンスとサーバー実装・テストを優先する。

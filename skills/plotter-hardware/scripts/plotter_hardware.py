@@ -20,8 +20,8 @@ from typing import Any, Mapping, Optional
 
 
 READ_COMMANDS = {
-    "info": ("GET", "/axiDraw/"),
-    "status": ("GET", "/axiDraw/status"),
+    "info": ("GET", "/plotter/"),
+    "status": ("GET", "/plotter/status"),
     "solenoid-info": ("GET", "/solenoid/"),
     "solenoid-status": ("GET", "/solenoid/status"),
     "servo-status": ("GET", "/servo/status"),
@@ -32,11 +32,11 @@ READ_COMMANDS = {
 }
 
 JSON_WRITE_PATHS = {
-    "connect": "/axiDraw/connect",
-    "disconnect": "/axiDraw/disconnect",
-    "home": "/axiDraw/home",
-    "move-default": "/axiDraw/move_to_default",
-    "move-to": "/axiDraw/move_to",
+    "connect": "/plotter/connect",
+    "disconnect": "/plotter/disconnect",
+    "home": "/plotter/home",
+    "move-default": "/plotter/move_to_default",
+    "move-to": "/plotter/move_to",
     "servo-up": "/servo/up",
     "servo-down": "/servo/down",
     "actuator-up": "/actuators/{tool}/up",
@@ -98,7 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--base-url",
         default=os.environ.get(
             "PLOTTER_HARDWARE_URL",
-            os.environ.get("BOTHUB_HARDWARE_URL", "http://localhost:8080"),
+            "http://localhost:8080",
         ),
         help="API base URL (default: PLOTTER_HARDWARE_URL or localhost:8080)",
     )

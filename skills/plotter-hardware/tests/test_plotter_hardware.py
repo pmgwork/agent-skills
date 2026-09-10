@@ -37,8 +37,15 @@ class PlotterTests(unittest.TestCase):
     def test_move_to_execute_routes_coordinates(self):
         with patch.object(plotter, 'request', return_value=0) as request:
             self.assertEqual(self.invoke(['move-to', '--x', '1', '--y', '2', '--execute'])[0], 0)
-            self.assertTrue(request.call_args.args[1].endswith('/axiDraw/move_to'))
+            self.assertTrue(request.call_args.args[1].endswith('/plotter/move_to'))
             self.assertEqual(request.call_args.kwargs['body'], {'x': 1.0, 'y': 2.0})
+
+    def test_read_commands_use_common_plotter_api(self):
+        with patch.object(plotter, 'request', return_value=0) as request:
+            self.assertEqual(self.invoke(['info'])[0], 0)
+            self.assertTrue(request.call_args.args[1].endswith('/plotter/'))
+            self.assertEqual(self.invoke(['status'])[0], 0)
+            self.assertTrue(request.call_args.args[1].endswith('/plotter/status'))
 
     def test_gpio_options_for_pulse_and_toggle(self):
         for command in ['pulse', 'solenoid-toggle']:
