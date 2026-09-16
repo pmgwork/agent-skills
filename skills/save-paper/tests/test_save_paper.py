@@ -64,6 +64,142 @@ class SavePaperTests(unittest.TestCase):
             self.assertIn("![[assets/Title/artifacts/image_001.png]]", text)
             self.assertEqual(len(images), 1)
 
+    def test_docling_paths_with_spaces_and_parentheses_survive_save(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifacts = root / "3746059.3747616 (1)_artifacts"
+            artifacts.mkdir()
+            image = artifacts / "image_000000.png"
+            image.write_bytes(b"figure")
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"pdf")
+            markdown = root / "note.md"
+            markdown.write_text(f"![Image]({image})\n", encoding="utf-8")
+            note, _, count = save_paper.save_paper(root, "WORM", pdf, markdown, artifacts)
+            self.assertEqual(note.read_text(), "![[assets/WORM/artifacts/image_001.png]]\n")
+            self.assertEqual(count, 1)
+            self.assertEqual((root / "papers/assets/WORM/artifacts/image_001.png").read_bytes(), b"figure")
+
+    def test_image_link_variants(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image = root / "figure (draft (1)).png"
+            image.write_bytes(b"figure")
+            references = [
+                str(image),
+                image.name,
+                image.as_uri(),
+                f'<{image}> "Caption"',
+                f'{image} "Caption"',
+                image.name.replace("(", r"\(").replace(")", r"\)"),
+            ]
+            for reference in references:
+                with self.subTest(reference=reference):
+                    text, images = save_paper.transform_and_collect_images(
+                        f"Before ![Image]({reference}) after ![Image]({reference})\n",
+                        root, None, "Title",
+                    )
+                    link = "![[assets/Title/artifacts/image_001.png]]"
+                    self.assertEqual(text, f"Before {link} after {link}\n")
+                    self.assertEqual(len(images), 1)
+
+    def test_invalid_image_inputs_do_not_publish_note(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"pdf")
+            markdown = root / "note.md"
+            for text, artifacts in [
+                ("![Image](missing (1)/image.png)", None),
+                ("![Image](unclosed (path.png)", None),
+                ("note", root / "missing_artifacts"),
+            ]:
+                with self.subTest(text=text, artifacts=artifacts):
+                    markdown.write_text(text, encoding="utf-8")
+                    with self.assertRaises(save_paper.PaperSaveError):
+                        save_paper.save_paper(root, "Title", pdf, markdown, artifacts)
+                    self.assertFalse((root / "papers").exists())
+
+    def test_explicit_image_is_not_replaced_by_same_basename(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifacts = root / "artifacts"
+            artifacts.mkdir()
+            (root / "image.png").write_bytes(b"correct")
+            (artifacts / "image.png").write_bytes(b"other")
+            _, images = save_paper.transform_and_collect_images(
+                "![Image](image.png)", root, artifacts, "Title"
+            )
+            self.assertEqual(images[0][0].read_bytes(), b"correct")
+            with self.assertRaises(save_paper.PaperSaveError):
+                save_paper.transform_and_collect_images(
+                    "![Image](missing/image.png)", root, artifacts, "Title"
+                )
+
+    def test_remote_images_cannot_resolve_to_local_names(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "image.png").write_bytes(b"local")
+            for ref in ["https://example.com/image.png", "//example.com/image.png", "file://example.com/image.png", "data:image/png;base64,AAA"]:
+                with self.subTest(ref=ref), self.assertRaises(save_paper.PaperSaveError):
+                    save_paper.transform_and_collect_images(f"![Image]({ref})", root, root, "Title")
+
+    def test_raw_special_characters_and_encoded_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ["figure#1.png", "figure%20name.png", "figure name.png"]:
+                image = root / name
+                image.write_bytes(name.encode())
+                for ref in [str(image), image.as_uri()]:
+                    with self.subTest(ref=ref):
+                        _, images = save_paper.transform_and_collect_images(f"![Image]({ref})", root, None, "Title")
+                        self.assertEqual(images[0][0], image.resolve())
+            (root / "figure%20name.png").unlink()
+            _, images = save_paper.transform_and_collect_images("![Image](figure%20name.png)", root, None, "Title")
+            self.assertEqual(images[0][0].name, "figure name.png")
+
+    def test_inline_code_is_preserved_including_multiline_spans(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "image.png").write_bytes(b"image")
+            code = '`![Example](missing.png)` and ``code ` ![Example](missing.png)``\n`multiline\n![Example](missing.png)`\n'
+            text, images = save_paper.transform_and_collect_images(code + "![Image](image.png)", root, None, "Title")
+            self.assertEqual(text, code + "![[assets/Title/artifacts/image_001.png]]")
+            self.assertEqual(len(images), 1)
+
+    def test_image_titles_with_unbalanced_parentheses(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "image.png").write_bytes(b"image")
+            for title in ['"view (left"', "'view right)'", r'"view \" (left"']:
+                with self.subTest(title=title):
+                    text, _ = save_paper.transform_and_collect_images(f"![Image](image.png {title})", root, None, "Title")
+                    self.assertEqual(text, "![[assets/Title/artifacts/image_001.png]]")
+
+    def test_thumbnail_tracks_source_and_numbered_extension(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "first.png").write_bytes(b"first")
+            (root / "figure.jpg").write_bytes(b"figure")
+            for ref in ["figure.jpg", "assets/Title/artifacts/image_002.png"]:
+                with self.subTest(ref=ref):
+                    text, images = save_paper.transform_and_collect_images(
+                        f'---\nfigure: "{ref}"\n---\n![First](first.png)\n![Figure 1](figure.jpg)', root, None, "Title"
+                    )
+                    self.assertIn('figure: "assets/Title/artifacts/image_002.jpg"', text)
+                    self.assertEqual(images[1][0].read_bytes(), b"figure")
+
+    def test_missing_thumbnail_aborts_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pdf = root / "paper.pdf"
+            pdf.write_bytes(b"pdf")
+            note = root / "note.md"
+            note.write_text('---\nfigure: "assets/Title/artifacts/image_001.png"\n---\nBody')
+            with self.assertRaises(save_paper.PaperSaveError):
+                save_paper.save_paper(root, "Title", pdf, note, None)
+            self.assertFalse((root / "papers").exists())
+
     def test_partial_copy_failure_removes_only_reserved_assets(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

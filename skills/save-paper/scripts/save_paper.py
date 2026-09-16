@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -12,10 +13,8 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 # Regex patterns for image link transformation and markdown cleanup
-MARKDOWN_IMAGE_RE = re.compile(
-    r"!\[[^\]]*\]\((?:<(?P<angle>[^>]+)>|(?P<plain>[^\s)]+))"
-    r"(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)"
-)
+IMAGE_START_RE = re.compile(r"!\[[^\]]*\]\(")
+INLINE_CODE_RE = re.compile(r"(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)", re.DOTALL)
 FENCE_RE = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
 IMAGE_SUFFIXES = {
     ".avif", ".bmp", ".gif", ".heic", ".heif", ".jpeg", ".jpg",
@@ -25,6 +24,56 @@ IMAGE_SUFFIXES = {
 
 class PaperSaveError(RuntimeError):
     """Raised when paper saving cannot be completed safely."""
+
+
+def replace_markdown_images(line: str, replace_reference) -> str:
+    """Accept Docling's raw paths with spaces and balanced parentheses, too."""
+    output: list[str] = []
+    cursor = 0
+    code_spans = [match.span() for match in INLINE_CODE_RE.finditer(line)]
+    while match := IMAGE_START_RE.search(line, cursor):
+        output.append(line[cursor:match.start()])
+        if any(start <= match.start() < end for start, end in code_spans):
+            output.append(match.group())
+            cursor = match.end()
+            continue
+        start = match.end()
+        if line[start:start + 1] == "<":
+            end = line.find(">", start + 1)
+            closing = re.match(r'''(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)''', line[end + 1:]) if end >= 0 else None
+            if closing is None:
+                raise PaperSaveError(f"Malformed image link: {line.strip()}")
+            reference = line[start + 1:end]
+            stop = end + 1 + closing.end()
+        else:
+            depth = 1
+            end = start
+            while end < len(line) and depth:
+                if depth == 1 and line[end] in "\"'" and end > start and line[end - 1].isspace():
+                    title = re.match(r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\s*\)''', line[end:])
+                    if title:
+                        reference = line[start:end].strip()
+                        end += title.end()
+                        depth = 0
+                        break
+                if line[end] == "\\":
+                    end += 2
+                    continue
+                if line[end] == "(":
+                    depth += 1
+                elif line[end] == ")":
+                    depth -= 1
+                end += 1
+            else:
+                reference = line[start:end - 1].strip()
+            if depth:
+                raise PaperSaveError(f"Malformed image link: {line.strip()}")
+            reference = re.sub(r"\\([() ])", r"\1", reference)
+            stop = end
+        output.append(replace_reference(reference))
+        cursor = stop
+    output.append(line[cursor:])
+    return "".join(output)
 
 
 def get_vault_root() -> Path:
@@ -91,29 +140,24 @@ def transform_and_collect_images(
     asset_prefix = f"assets/{sanitized_title}/artifacts"
 
     def resolve_image(reference: str) -> Path:
-        split = urlsplit(reference)
-        decoded = unquote(split.path)
-        candidate = Path(decoded)
-        if not candidate.is_absolute():
-            candidate = markdown_dir / candidate
-        candidate = candidate.resolve()
-
-        if artifacts_dir:
-            artifacts_root = artifacts_dir.resolve()
-            try:
-                candidate.relative_to(artifacts_root)
-            except ValueError:
-                fallback = (artifacts_root / Path(decoded).name).resolve()
-                try:
-                    fallback.relative_to(artifacts_root)
-                except ValueError:
-                    pass
-                else:
-                    candidate = fallback
-
-        if not candidate.is_file():
-            raise PaperSaveError(f"Referenced image file not found: {reference}")
-        return candidate
+        if reference.startswith("//") or re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", reference):
+            split = urlsplit(reference)
+            if split.scheme.lower() != "file" or split.netloc not in {"", "localhost"}:
+                raise PaperSaveError(f"Image must be a local file; download it first: {reference}")
+            paths = [Path(unquote(split.path))]
+        else:
+            # Raw Docling filenames take precedence over URL decoding (# and % are legal).
+            paths = [Path(reference)]
+            if unquote(reference) != reference:
+                paths.append(Path(unquote(reference)))
+        for path in paths:
+            candidates = [path] if path.is_absolute() else [markdown_dir / path]
+            if artifacts_dir and not path.is_absolute():
+                candidates.append(artifacts_dir / path)
+            for candidate in candidates:
+                if candidate.is_file():
+                    return candidate.resolve()
+        raise PaperSaveError(f"Referenced image file not found: {reference}")
 
     def assign(source_path: Path) -> str:
         source_path = source_path.resolve()
@@ -126,8 +170,7 @@ def transform_and_collect_images(
             ordered_images.append((source_path, filename))
         return assignments[source_path]
 
-    def replace_image_match(match: re.Match[str]) -> str:
-        ref = match.group("angle") or match.group("plain")
+    def replace_image_reference(ref: str) -> str:
         source_file = resolve_image(ref)
         assigned_name = assign(source_file)
         return f"![[{asset_prefix}/{assigned_name}]]"
@@ -135,10 +178,20 @@ def transform_and_collect_images(
     # Line-by-line transformation ignoring code blocks
     output_lines: list[str] = []
     active_fence: tuple[str, int] | None = None
+    pending: list[str] = []
 
-    for line in text.splitlines(keepends=True):
+    def flush_pending() -> None:
+        output_lines.append(replace_markdown_images("".join(pending), replace_image_reference))
+        pending.clear()
+
+    frontmatter = re.match(r"\A---\r?\n.*?\r?\n---(?:\r?\n|$)", text, re.DOTALL)
+    header = frontmatter.group() if frontmatter else ""
+    body = text[len(header):]
+
+    for line in body.splitlines(keepends=True):
         fence_match = FENCE_RE.match(line)
         if fence_match:
+            flush_pending()
             fence = fence_match.group("fence")
             if active_fence is None:
                 active_fence = (fence[0], len(fence))
@@ -152,8 +205,10 @@ def transform_and_collect_images(
             continue
 
         if active_fence is None:
-            line = MARKDOWN_IMAGE_RE.sub(replace_image_match, line)
-        output_lines.append(line)
+            pending.append(line)
+        else:
+            output_lines.append(line)
+    flush_pending()
 
     # Keep every supported image artifact, including nested and unreferenced files.
     if artifacts_dir and artifacts_dir.is_dir():
@@ -161,7 +216,33 @@ def transform_and_collect_images(
             if artifact.is_file() and artifact.suffix.lower() in IMAGE_SUFFIXES:
                 assign(artifact)
 
-    return "".join(output_lines), ordered_images
+    def replace_figure(match: re.Match[str]) -> str:
+        value = match.group(1).strip()
+        if value.startswith('"'):
+            try:
+                reference = json.loads(value)
+            except ValueError as exc:
+                raise PaperSaveError("figure must be a quoted local image path") from exc
+        elif value.startswith("'") and value.endswith("'"):
+            reference = value[1:-1].replace("''", "'")
+        else:
+            reference = value
+        if not isinstance(reference, str) or not reference:
+            raise PaperSaveError("figure must be a local image path, or omit it")
+        if reference.startswith(asset_prefix + "/"):
+            filename = reference[len(asset_prefix) + 1:]
+            names = list(assignments.values())
+            if filename not in names:
+                matches = [name for name in names if Path(name).stem == Path(filename).stem]
+                if len(matches) != 1:
+                    raise PaperSaveError(f"Thumbnail does not match a saved image: {reference}")
+                filename = matches[0]
+        else:
+            filename = assign(resolve_image(reference))
+        return "figure: " + json.dumps(f"{asset_prefix}/{filename}", ensure_ascii=False)
+
+    header = re.sub(r"^figure:[ \t]*(.*)$", replace_figure, header, flags=re.MULTILINE)
+    return header + "".join(output_lines), ordered_images
 
 
 def save_paper(
@@ -184,6 +265,8 @@ def save_paper(
         raise PaperSaveError(f"Original PDF not found or is empty: {pdf_path}")
     if not markdown_path.is_file() or markdown_path.stat().st_size == 0:
         raise PaperSaveError(f"Markdown note not found or is empty: {markdown_path}")
+    if artifacts_dir is not None and not artifacts_dir.is_dir():
+        raise PaperSaveError(f"Docling artifacts directory not found: {artifacts_dir}")
 
     sanitized = sanitize_title(title)
     papers_dir = vault_root / "papers"
