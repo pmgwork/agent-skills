@@ -37,15 +37,32 @@ class PlotterTests(unittest.TestCase):
     def test_move_to_execute_routes_coordinates(self):
         with patch.object(plotter, 'request', return_value=0) as request:
             self.assertEqual(self.invoke(['move-to', '--x', '1', '--y', '2', '--execute'])[0], 0)
-            self.assertTrue(request.call_args.args[1].endswith('/plotter/move_to'))
+            self.assertTrue(request.call_args.args[1].endswith('/axiDraw/move_to'))
             self.assertEqual(request.call_args.kwargs['body'], {'x': 1.0, 'y': 2.0})
 
-    def test_read_commands_use_common_plotter_api(self):
+    def test_read_commands_use_compatibility_axidraw_api(self):
         with patch.object(plotter, 'request', return_value=0) as request:
             self.assertEqual(self.invoke(['info'])[0], 0)
-            self.assertTrue(request.call_args.args[1].endswith('/plotter/'))
+            self.assertTrue(request.call_args.args[1].endswith('/axiDraw/'))
             self.assertEqual(self.invoke(['status'])[0], 0)
-            self.assertTrue(request.call_args.args[1].endswith('/plotter/status'))
+            self.assertTrue(request.call_args.args[1].endswith('/axiDraw/status'))
+
+    def test_plotter_mutations_use_compatibility_axidraw_api(self):
+        expected_paths = {
+            'connect': '/axiDraw/connect',
+            'disconnect': '/axiDraw/disconnect',
+            'home': '/axiDraw/home',
+            'move-default': '/axiDraw/move_to_default',
+            'move-to': '/axiDraw/move_to',
+        }
+        for command, path in expected_paths.items():
+            with self.subTest(command=command):
+                args = [command]
+                if command == 'move-to':
+                    args.extend(['--x', '1', '--y', '2'])
+                result, output = self.invoke(args)
+                self.assertEqual(result, 0)
+                self.assertIn(f'POST http://localhost:8080{path}', output)
 
     def test_gpio_options_for_pulse_and_toggle(self):
         for command in ['pulse', 'solenoid-toggle']:
