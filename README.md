@@ -16,7 +16,7 @@
 | [paper-english-proofreading](./skills/paper-english-proofreading/) | 学術論文の英文校正、または日本語原文からの英訳を行う。投稿先・分野の慣習、LaTeX 形式、指定用語を保持する。 |
 | [save-paper](./skills/save-paper/) | 論文 PDF を Docling で抽出し、整形した原文・画像・原本 PDF・BibTeX とともに Obsidian vault へ保存する。 |
 | [paper-writing-scripts](./skills/paper-writing-scripts/) | 日本語学術論文の論理構造・段落構成・である調・句読点を整える。 |
-| [plotter-hardware](./skills/plotter-hardware/) | Plotter Hardware の Flask REST API 経由で、AxiDraw、B1 イレーサー、B3 ペン、D2 ソレノイドを安全に操作する。 |
+| [plotter-hardware](./skills/plotter-hardware/) | Plotter Hardware の Flask REST API 経由で、AxiDraw、UUNA TEK、M5StickC イレーサーと各アクチュエータを安全に操作する。 |
 
 ## 構成
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Plotter Hardware"
-  short_description: "互換/axiDraw APIを安全に操作"
+  short_description: "AxiDraw・UUNA・M5イレーサーを安全に操作"
   default_prompt: "$plotter-hardware を使い、/actuators/config で選択されたプロッタと実装済み機能を確認してから、指定の操作を安全に実行してください。"

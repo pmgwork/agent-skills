@@ -16,7 +16,7 @@
 
 サーバー起動時に UUNA TEK USB（VID/PID `1a86:7523` または `1a86:8040`）を検出すると UUNA TEK を優先し、なければ AxiDraw を選ぶ。API 操作だけでは切り替えられない。`GET /axiDraw/` は選択された type や capabilities を公開しないため、`GET /actuators/config` の形で判定する。
 
-- UUNA TEK: `driver` が `uuna_tek`。`pen.implemented` は `true`、`eraser.implemented` と `solenoid.implemented` は `false`。
+- UUNA TEK: `driver` が `uuna_tek`。`pen.implemented` は `true`。`eraser.implemented` は M5StickC イレーサー設定が有効なら `true` で、`eraser.profile` に位置補正と接触面の設定、`eraser.controller` に接続設定を返す。`solenoid.implemented` は `false`。
 - AxiDraw: `servo_profiles`、`solenoid_port`、`solenoid_pin` を持つ。
 
 接続・切断は失敗時も HTTP 200 で `success: false` と `error` を返し得る。未接続の `status` も HTTP 200 で `connected: false` と `error` を返す。
@@ -34,7 +34,7 @@
 | `GET` | `/servo/status` | AxiDraw 内蔵サーボ互換状態 |
 | `POST` | `/servo/up`, `/servo/down` | AxiDraw 内蔵サーボ操作 |
 
-`tool` は `pen`、`eraser`、`solenoid`。AxiDraw では順に B3、B1、D2。UUNA TEK で実装されるのは `pen` だけである。ただし現行実装は未実装 tool を 400 にせず無動作で成功させ、status の `available` を真にする場合がある。物理対応の判断には `/actuators/config` の `implemented` を使う。
+`tool` は `pen`、`eraser`、`solenoid`。AxiDraw では順に B3、B1、D2。UUNA TEK では `pen` が DrawCore Z 軸、設定が有効な `eraser` が M5StickC の L12-R を動かす。`solenoid` は無動作である。旧 `servo` API は `eraser` の別名なので、UUNA TEK でも有効な M5StickC イレーサーを動かす。物理対応の判断には `/actuators/config` の `implemented` を使う。
 
 ## Solenoid API
 
@@ -54,7 +54,7 @@
 }
 ```
 
-`duration` は正の秒数で、省略時は 0.5 秒。再設定では `port` と `pin` を同時に指定する。`default_state` は `LOW` または `HIGH`。実機操作は AxiDraw 専用であり、UUNA TEK の互換ソレノイドは無動作である。
+`duration` は正の秒数で、省略時は 0.5 秒。再設定では `port` と `pin` を同時に指定する。`default_state` は `LOW` または `HIGH`。実機操作は AxiDraw 専用であり、UUNA TEK の互換ソレノイドは無動作である。UUNA TEK のイレーサーはこの API ではなく `/actuators/eraser/*` または `/servo/*` を使う。
 
 ## Drawing API
 
@@ -72,10 +72,10 @@
 
 - `x`、`y`、`pen` は必須。`pen` は `pen`、`eraser`、`solenoid`、旧別名 `servo`。
 - `delay` は機構固有の DOWN 待機に加える非負秒数。既定値は 0.5。
-- `eraser_position_correction` は既定で `true`。AxiDraw の `eraser`／`servo` のみに適用される。
+- `eraser_position_correction` は既定で `true`。AxiDraw と UUNA TEK の `eraser`／`servo` に適用される。
 - 旧 `margin` は拒否される。
 - 事前に座標を検証し、成功・失敗のどちらでも選択機構を UP／OFF に戻す。
-- UUNA TEK で物理描画するには `pen` を指定する。他の値は無動作になり得る。
+- UUNA TEK では `pen`、または `eraser.implemented: true` を確認したうえで `eraser`／`servo` を指定する。`solenoid` は無動作である。
 
 SVG ジョブ:
 
@@ -89,17 +89,17 @@ SVG ジョブ:
 `POST /drawing/jobs` の multipart フィールド:
 
 - `file`: UTF-8 SVG、必須、最大 10 MiB。
-- `pen`: 必須。UUNA TEK で実機描画する場合は `pen` のみ。
+- `pen`: 必須。UUNA TEK では `pen`、または M5StickC イレーサーが実装済みの場合に `eraser` を指定する。
 - `options`: 任意の JSON オブジェクト文字列。対応キーは `layer`、`copies`、`speed_pendown`、`speed_penup`、`reordering`、`pen_down_delay`、`model`、`eraser_position_correction`。同名の個別 multipart フィールドでも指定でき、個別値が JSON を上書きする。
 
-DTD、entity、script、外部参照は拒否される。成功時は 202 と `job_id`、`preview`、`metadata`、`options` が返る。ジョブ状態は `pending`、`running`、`cancelling`、`completed`、`failed`、`cancelled`。同時ジョブや一部の同時操作は 409 になり得る。
+DTD、entity、script、外部参照は拒否される。機械範囲から完全に外れて描画可能パスが残らない SVG は 400 で拒否され、ジョブも開始されない。一部だけクリップされる場合は受理され、警告が `preview.warnings` に保持される。成功時は 202 と `job_id`、`preview`、`metadata`、`options` が返る。ジョブ状態は `pending`、`running`、`cancelling`、`completed`、`failed`、`cancelled`。同時ジョブや一部の同時操作は 409 になり得る。
 
 ## 代表的なエラー境界
 
-- 未接続、不正入力、未利用ハードウェア: 400。ただし UUNA TEK の未実装 tool は互換用無動作として成功する場合がある。
+- 未接続、不正入力、未利用ハードウェア、描画可能パスが残らない SVG: 400。ただし UUNA TEK の未実装 tool は互換用無動作として成功する場合がある。
+- M5StickC イレーサーへの通信失敗など、ハードウェア実行中の例外: 500。
 - 描画中の一部操作、既に終端状態のジョブのキャンセル、状態不明の solenoid toggle: 409。
 - home 実装がない場合: 501。
-- ハードウェア実行中の例外: 500。
 - 存在しないジョブ: 404。
 
 HTTP 2xx だけでなく、レスポンス本文の `success`、`connected`、`error` を確認する。OpenAPI と実装が食い違う場合は、起動中のレスポンスとサーバー実装・テストを優先する。
