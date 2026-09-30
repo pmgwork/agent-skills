@@ -1,0 +1,4 @@
+interface:
+  display_name: "paper2obsidian"
+  short_description: "Docling抽出を原本と照合し、図・表・引用リンク付きでObsidianへ保存"
+  default_prompt: "$paper2obsidian でこの論文PDFを原文のままMarkdown化し、参考文献リンクとともにObsidianへ保存してください。"
