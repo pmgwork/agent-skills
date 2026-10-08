@@ -1,0 +1,4 @@
+interface:
+  display_name: "agy Japanese Fix"
+  short_description: "agyで日本語を校正・文体統一"
+  default_prompt: "$agy-japanese-fix を使い、日本語文章を校正してください。"
