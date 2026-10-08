@@ -8,15 +8,16 @@
 
 | スキル | 用途 |
 | --- | --- |
-| [After Effects MCP](./skills/aftereffects-mcp/SKILL.md) | `@kumoproductions/mcp-aftereffects` を通じて、開いている After Effects プロジェクトのコンポジション、レイヤー、テキスト、図形、エフェクト、マスク、キーフレーム、フッテージ、レンダーキューを安全に確認・操作する。 |
-| [Blender MCP](./skills/blender-mcp/SKILL.md) | Blender MCP を通じて、Blender シーンや `.blend` ファイルを段階的に検査し、最小限の編集、スクリーンショット・レンダーによる検証を行う。 |
-| [frontend-design](./skills/frontend-design/SKILL.md) | 既存の Web サイトやアプリの機能・情報構造を保ったまま、余白・無彩色・1px border・控えめな角丸を基調とした UI に差し替える。Tailwind CSS と shadcn/ui を前提とする。 |
+| [After Effects MCP](./skills/aftereffects-mcp/) | `@kumoproductions/mcp-aftereffects` を通じて、開いている After Effects プロジェクトのコンポジション、レイヤー、テキスト、図形、エフェクト、マスク、キーフレーム、フッテージ、レンダーキューを安全に確認・操作する。 |
+| [Blender MCP](./skills/blender-mcp/) | Blender MCP を通じて、Blender シーンや `.blend` ファイルを段階的に検査し、最小限の編集、スクリーンショット・レンダーによる検証を行う。 |
+| [frontend-design](./skills/frontend-design/) | React、Tailwind CSS v4、coss ui、Gen Interface JP で Web サイトやアプリを作成・改修する。coss が定めないページの組版・掲載内容の方針を扱う。 |
 | [ochiai-summary](./skills/ochiai-summary/) | 入力された文章・メモ・表・データを、内容の範囲内で落合フォーマットの6見出しに要約する。 |
 | [paper-english-proofreading](./skills/paper-english-proofreading/) | 学術論文の英文校正、または日本語原文からの英訳を行う。投稿先・分野の慣習、LaTeX 形式、指定用語を保持する。 |
 | [save-paper](./skills/save-paper/) | 論文 PDF を Docling で抽出し、整形した原文・画像・原本 PDF・BibTeX とともに Obsidian vault へ保存する。 |
 | [paper2obsidian](./skills/paper2obsidian/) | Doclingの抽出結果を原本と照合・修正し、原文・図・表・引用番号からReferencesへの移動・論文ノートへのリンクとともにObsidianへ保存する。 |
 | [paper-writing-scripts](./skills/paper-writing-scripts/) | 日本語学術論文の論理構造・段落構成・である調・句読点を整える。 |
 | [plotter-hardware](./skills/plotter-hardware/) | Plotter Hardware の Flask REST API 経由で、AxiDraw、UUNA TEK、M5StickC イレーサーと各アクチュエータを安全に操作する。 |
+| [agy-japanese-fix](./skills/agy-japanese-fix/) | Antigravity CLI（agy）の one-shot 実行で日本語を校正・文体統一する。 |
 
 ## 構成
 
@@ -40,6 +41,10 @@ skills/
 │   ├── references/
 │   ├── scripts/
 │   └── tests/
+├── agy-japanese-fix/
+│   ├── agents/
+│   ├── references/
+│   └── scripts/
 ├── plotter-hardware/
 │   ├── agents/
 │   ├── references/
