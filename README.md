@@ -13,7 +13,6 @@
 | [frontend-design](./skills/frontend-design/) | React、Tailwind CSS v4、coss ui、Gen Interface JP で Web サイトやアプリを作成・改修する。coss が定めないページの組版・掲載内容の方針を扱う。 |
 | [ochiai-summary](./skills/ochiai-summary/) | 入力された文章・メモ・表・データを、内容の範囲内で落合フォーマットの6見出しに要約する。 |
 | [paper-english-proofreading](./skills/paper-english-proofreading/) | 学術論文の英文校正、または日本語原文からの英訳を行う。投稿先・分野の慣習、LaTeX 形式、指定用語を保持する。 |
-| [save-paper](./skills/save-paper/) | 論文 PDF を Docling で抽出し、整形した原文・画像・原本 PDF・BibTeX とともに Obsidian vault へ保存する。 |
 | [paper2obsidian](./skills/paper2obsidian/) | Doclingの抽出結果を原本と照合・修正し、原文・図・表・引用番号からReferencesへの移動・論文ノートへのリンクとともにObsidianへ保存する。 |
 | [paper-writing-scripts](./skills/paper-writing-scripts/) | 日本語学術論文の論理構造・段落構成・である調・句読点を整える。 |
 | [plotter-hardware](./skills/plotter-hardware/) | Plotter Hardware の Flask REST API 経由で、AxiDraw、UUNA TEK、M5StickC イレーサーと各アクチュエータを安全に操作する。 |
@@ -49,9 +48,6 @@ skills/
 │   ├── agents/
 │   ├── references/
 │   └── scripts/
-└── save-paper/
-    ├── agents/
-    └── scripts/
 ```
 
 ## 使い方
@@ -87,7 +83,6 @@ skills/
 ## 注意事項
 
 - `aftereffects-mcp` は After Effects と `@kumoproductions/mcp-aftereffects` サーバーが利用可能な環境で使用する。操作前にプロジェクトの状態を確認し、変更後は読み戻しやプレビューで検証する。
-- `save-paper` は Docling と Obsidian vault を使用する。保存先やメタデータを確認してから実行する。
-- `paper2obsidian` はDoclingで下書きを作り、原本のページ画像と照合・修正して、補助スクリプトで引用リンク生成・保存を行う。通常の保存先は `PAPER_SAVE_VAULT_ROOT` を使用する。
+- `paper2obsidian` はDoclingで下書きを作り、図・表・数式・参考文献など崩れやすい箇所だけ原本と照合・修正して、補助スクリプトで引用リンク生成・保存を行う。通常の保存先は `PAPER_SAVE_VAULT_ROOT` を使用する。
 - `plotter-hardware` は実機を動かしたり、ソレノイドを作動させたりするため、状態確認と対象操作の明示的な依頼が必要である。
 - ハードウェア操作の詳細なエンドポイント、座標範囲、実行条件は各スキルの `references/` と `SKILL.md` を正本とする。

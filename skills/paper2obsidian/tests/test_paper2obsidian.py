@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 from link_references import build_note, link_citations, render_references
 from paper_common import PaperSaveError, sanitize_title
 from save_paper import save_paper
+from triage import parse_references, split_references
 
 
 class Paper2ObsidianTests(unittest.TestCase):
@@ -135,6 +136,25 @@ class Paper2ObsidianTests(unittest.TestCase):
         self.assertIn('[[papers/Future paper|Future paper]]', text)
         with self.assertRaises(PaperSaveError): save_paper(self.root, title, pdf, md, None)
         self.assertEqual(note.read_text(), text)
+
+    def test_triage_splits_references_and_drafts_titles(self):
+        md = ("# Paper\n\nBody [1].\n\n## REFERENCES\n\n"
+              "1. Cao, X. and Balakrishnan, R., Interacting with Information Spaces. In Proc. UIST 2006 , 225-234.\n"
+              "2. Manresa, C. and Perales, F. (2005) Hand tracking for HCI. Electronic Letters, 5 (3).\n"
+              "3. Tang, A., Greenberg, S.: Videoarms: embodiments in groupware. In Proc. BCS-HCI , 2006.\n"
+              "4. A. Author, \"Quoted IEEE Style Title,\" in Proc. X, 2020, doi: 10.1145/123.456.\n"
+              "\n## Appendix\n\nKept.\n")
+        draft, section = split_references(md)
+        self.assertNotIn("REFERENCES", draft)
+        self.assertIn("## Appendix", draft)
+        refs = parse_references(section)
+        self.assertEqual([r["title"] for r in refs], [
+            "Interacting with Information Spaces", "Hand tracking for HCI",
+            "Videoarms: embodiments in groupware", "Quoted IEEE Style Title"])
+        self.assertEqual(refs[0]["year"], 2006)
+        self.assertEqual(refs[0]["first_author"], "Cao")
+        self.assertEqual(refs[3]["doi"], "10.1145/123.456")
+        self.assertTrue(all(r["kind"] == "paper" for r in refs))
 
 
 if __name__ == '__main__':

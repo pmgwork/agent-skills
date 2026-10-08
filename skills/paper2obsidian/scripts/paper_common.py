@@ -8,7 +8,7 @@ class PaperSaveError(RuntimeError):
 
 
 def sanitize_title(title: str) -> str:
-    """Keep save-paper's ordinary names; remove Obsidian link delimiters too."""
+    """Filesystem-safe note name without Obsidian link delimiters."""
     cleaned = unicodedata.normalize("NFC", title)
     cleaned = re.sub(r'[/\\*?"<>|#^%\x00-\x1f\x7f]', "", cleaned)
     cleaned = re.sub(r"[:\-\u2013\u2014]", " ", cleaned)
