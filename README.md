@@ -13,7 +13,7 @@
 | [frontend-design](./skills/frontend-design/) | React、Tailwind CSS v4、coss ui、Gen Interface JP で Web サイトやアプリを作成・改修する。coss が定めないページの組版・掲載内容の方針を扱う。 |
 | [ochiai-summary](./skills/ochiai-summary/) | 入力された文章・メモ・表・データを、内容の範囲内で落合フォーマットの6見出しに要約する。 |
 | [paper-english-proofreading](./skills/paper-english-proofreading/) | 学術論文の英文校正、または日本語原文からの英訳を行う。投稿先・分野の慣習、LaTeX 形式、指定用語を保持する。 |
-| [paper2obsidian](./skills/paper2obsidian/) | Markerで抽出し、書誌データ・DOIによる論文ノートへのリンクとともにスクリプト1本でObsidianへ保存する。書誌データが取れない場合だけエージェントが補う。 |
+| [paper2obsidian](./skills/paper2obsidian/) | Markerで抽出し、書誌データ・DOIによる論文ノートへのリンクとともにスクリプト1本でObsidianへ保存する。エージェントはノート冒頭の重複の削除と、書誌データが取れない場合の補完だけを行う。 |
 | [paper-writing-scripts](./skills/paper-writing-scripts/) | 日本語学術論文の論理構造・段落構成・である調・句読点を整える。 |
 | [plotter-hardware](./skills/plotter-hardware/) | Plotter Hardware の Flask REST API 経由で、AxiDraw、UUNA TEK、M5StickC イレーサーと各アクチュエータを安全に操作する。 |
 | [agy-japanese-fix](./skills/agy-japanese-fix/) | Antigravity CLI（agy）の one-shot 実行で日本語を校正・文体統一する。 |

@@ -1,6 +1,6 @@
 ---
 name: paper2obsidian
-description: 論文PDFをMarkerで抽出し、原文Markdown・図・表・原本PDF・BibTeXをObsidianへ保存する。参考文献を論文ノートへのリンクにし、本文の引用番号からReferencesへ移動できる形にする。処理はスクリプト1本で行い、エージェントは書誌データが取れない場合だけ補う。論文保存やテスト変換に使う。
+description: 論文PDFをMarkerで抽出し、原文Markdown・図・表・原本PDF・BibTeXをObsidianへ保存する。参考文献を論文ノートへのリンクにし、本文の引用番号からReferencesへ移動できる形にする。処理はスクリプト1本で行い、エージェントは保存したノートの冒頭の重複を消すことと、書誌データが取れない場合の補完だけを行う。論文保存やテスト変換に使う。
 ---
 
 # paper2obsidian
@@ -22,11 +22,19 @@ PY="$(sed -n '1s/^#!//p' "$(command -v marker_single)")"
 
 ## 結果
 
-- **終了コード0（`"status": "saved"`）**: 保存と検査まで完了している。ノートを読み直さず、出力JSONから報告する。
-- **終了コード2（`"status": "review"`）**: `<work>/review.md` の項目を `<work>/draft.md` に1回で反映し、`"$PY" scripts/run.py --work "<work>" --resume` で保存する。
+- **終了コード0（`"status": "saved"`）**: 保存と検査まで完了している。下記「冒頭の整理」をしてから報告する。
+- **終了コード2（`"status": "review"`）**: `<work>/review.md` の項目を `<work>/draft.md` に1回で反映し、`"$PY" scripts/run.py --work "<work>" --resume` で保存してから「冒頭の整理」をする。
   - **metadata**: Crossrefに記録がない。まず `draft.md` の冒頭を1ページ目の画像と見比べ、単語が途中で切れるなど本文が崩れていれば、PDFの文字データが壊れているので、frontmatterを書かずに新しい作業ディレクトリで `--ocr always` を付けて実行し直す。崩れていなければ、1ページ目の画像から frontmatter（`title`・`authors`・`year`・`doi`・`source`・`citekey`）を書き、末尾に `## PDF`（`[Original PDF](<assets/{SanitizedTitle}/{SanitizedTitle}.pdf>)`）と `## BibTeX`（コードブロック）を足す。`title` は保存名にも使う。`citekey` は第一著者姓＋年＋タイトル先頭語（a/an/theを除く）。保存名は `scripts/paper_common.py` の `sanitize_title()` で求める。不明な値は創作しない。
   - **text**: OCRが必要だが実行できなかった。ユーザーに llama.cpp の導入を依頼し、本文は直さない。
 - **終了コード1**: エラー。同名ノートが既にある場合も停止するので、退避・削除はユーザーの指示に従う。
+
+## 冒頭の整理
+
+保存したノート（出力JSONの `note`）の、Introduction（序論）の最初の数段落までだけを読み、frontmatterと重複するものと1ページ目の欄外の文を1回の編集で消す。本文の他の部分は読まない。
+
+- 消す: 題名の見出し、著者欄（名前・所属・メール・ORCIDのリンク）、ACM Reference Format などの引用表記、学会名・会期、著作権・ライセンス表記、1ページ目の脚注（★・†などの記号と、研究の経緯・責任著者・連絡先）。
+- 残す: 図とキャプション、Abstract、CCS Concepts、Keywords、本文。
+- 欄外の文が序論の段落の途中に挟まっていた場合は、消したあと前後の段落を1つの段落につなげる。文言は変えない。
 
 報告は、ノートのパス、`citekey`、図の保存数（`images`）、参考文献の既存/未保存/リンクなしの件数を簡潔に示す。`problems` が空でなければその内容を、`unlinked_with_reason`・`missing_numbers`・`duplicate_numbers` があれば一言添える。直す必要はない。
 
