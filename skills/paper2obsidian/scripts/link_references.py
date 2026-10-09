@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
 """Link numeric citations to reference blocks and paper references to Vault notes."""
-import argparse
 import json
+import html
 import re
+import unicodedata
 from pathlib import Path
-from urllib.parse import quote
 
-from paper_common import PaperSaveError, doi_key, sanitize_title, title_key
-from save_paper import FENCE_RE, get_vault_root
+from paper_common import PaperSaveError, doi_key, reference_entries, sanitize_title, title_key
+from save_paper import FENCE_RE
 
 
 def scalar(header: str, key: str) -> str:
@@ -85,8 +84,9 @@ SHIELDS = re.compile(
 CITATION = re.compile(r"(?<![\\!\[])\[(\d+(?:\s*[,;\-–]\s*\d+)*)\](?![\](])")
 
 
-def link_citations(text: str, numbers: set[int]) -> tuple[str, set[int]]:
+def link_citations(text: str, numbers: set[int], unmatched: list | None = None) -> tuple[str, set[int]]:
     cited = set()
+    unmatched = [] if unmatched is None else unmatched
 
     def plain(fragment):
         def replace(match):
@@ -94,9 +94,12 @@ def link_citations(text: str, numbers: set[int]) -> tuple[str, set[int]]:
             ns = {int(x) for x in re.findall(r"\d+", content)}
             for start, end in re.findall(r"(\d+)\s*[-–]\s*(\d+)", content):
                 start, end = int(start), int(end)
-                if end < start or end - start > 1000: raise PaperSaveError("Invalid citation range")
+                if end < start or end - start > 1000:
+                    unmatched.append(match[0]); return match[0]
                 ns.update(range(start, end + 1))
-            if ns - numbers: raise PaperSaveError(f"Citation has no reference: {sorted(ns - numbers)}")
+            # "[0, 1]" intervals and other brackets that are not citations stay as they are.
+            if ns - numbers:
+                unmatched.append(match[0]); return match[0]
             cited.update(ns)
             linked = re.sub(r"\d+", lambda m: f"[[#^ref-{int(m[0])}|{m[0]}]]", content)
             # Literal citation brackets must not compete with Wikilink parsing.
@@ -126,53 +129,6 @@ def link_citations(text: str, numbers: set[int]) -> tuple[str, set[int]]:
     return "".join(output), cited
 
 
-def wiki_label(title: str) -> str:
-    return (title.replace("&", "&amp;").replace("|", "&#124;")
-            .replace("[", "&#91;").replace("]", "&#93;"))
-
-
-def render_references(refs: list[dict], vault: Path) -> tuple[str, list[dict]]:
-    notes = index_notes(vault); seen_numbers = set(); seen_targets = {}; rows = []; report = []
-    for ref in refs:
-        if not isinstance(ref, dict): raise PaperSaveError("Each reference must be an object")
-        number = ref.get("number")
-        if type(number) is not int or number < 1 or number in seen_numbers:
-            raise PaperSaveError("Reference numbers must be unique positive integers")
-        seen_numbers.add(number)
-        title = ref.get("title")
-        if not isinstance(title, str) or not title.strip() or "\n" in title or "\r" in title:
-            raise PaperSaveError(f"Missing/split reference title: {number}")
-        kind = ref.get("kind")
-        if kind == "paper":
-            for key in ("doi", "first_author", "target"):
-                if key in ref and not isinstance(ref[key], str):
-                    raise PaperSaveError(f"Reference {number}: {key} must be a string")
-            target, exists = resolve_reference(ref, notes)
-            identity = ("doi", doi_key(ref["doi"])) if ref.get("doi") else ("title", title_key(title), str(ref.get("year", "")))
-            if target in seen_targets and seen_targets[target] != identity:
-                raise PaperSaveError(f"Different references resolve to the same filename: {target}")
-            seen_targets[target] = identity
-            label = f"[[{target}|{wiki_label(title)}]]"
-            report.append({"number": number, "target": target, "exists": exists})
-        elif kind in {"web", "video", "artwork", "other"}:
-            url = ref.get("url", "")
-            if url:
-                if not isinstance(url, str) or not re.match(r"^https?://", url) or re.search(r"[\s<>]", url):
-                    raise PaperSaveError(f"Non-paper URL must be original HTTP(S): {number}")
-                escaped = title.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
-                encoded = quote(url, safe=":/?#%=&+@;,~!$*'")
-                label = f"[{escaped}](<{encoded}>)"
-                report.append({"number": number, "url": url})
-            else:
-                label = ref.get("citation")
-                if not isinstance(label, str) or not label.strip() or re.search(r"[\r\n]|\^ref-\d+", label):
-                    raise PaperSaveError(f"Non-paper without URL needs original citation text: {number}")
-                report.append({"number": number, "unlinked": True})
-        else: raise PaperSaveError(f"Classify reference {number}: paper/web/video/artwork/other")
-        rows.append((number, f"{number}. {label} ^ref-{number}"))
-    return "## References\n\n" + "\n".join(row for _, row in sorted(rows)) + "\n", report
-
-
 def body_headings(text: str):
     fm = re.match(r"\A---\r?\n.*?\r?\n---(?:\r?\n|$)", text, re.S)
     offset = fm.end() if fm else 0
@@ -189,39 +145,119 @@ def body_headings(text: str):
         offset += len(line)
 
 
+REF_HEADING = re.compile(r"(?:\d+\.?\s+)?(references|bibliography|works cited|参考文献|文献)", re.I)
+
+
+def find_reference_section(text: str) -> tuple[int, int] | None:
+    """Character span of the References section body (after its heading line)."""
+    headings = list(body_headings(text))
+    for index, (pos, level, title) in enumerate(headings):
+        if REF_HEADING.fullmatch(unicodedata.normalize("NFKC", title).strip()):
+            start = text.index("\n", pos) + 1 if "\n" in text[pos:] else len(text)
+            end = next((p for p, lv, _ in headings[index + 1:] if lv <= level), len(text))
+            return start, end
+    return None
+def wiki_label(title: str) -> str:
+    return (title.replace("&", "&amp;").replace("|", "&#124;")
+            .replace("[", "&#91;").replace("]", "&#93;"))
+
+
+# Punctuation, spacing and HTML entities that extractors write into Markdown ("Eye&amp;Head").
+SEPARATOR = r"(?:&#?\w+;|[\W_])*"
+
+
+def find_title(entry: str, title: str) -> re.Match | None:
+    """The registered title as printed in the entry, ignoring case, punctuation and spacing."""
+    title = re.sub(r"<[^>]+>", "", html.unescape(title))  # Crossref titles may carry JATS/HTML markup
+    words = re.findall(r"\w+", title)
+    for candidate in (words, [w for w in words if w.isascii()]):  # "Satori 悟り:" prints as "Satori:"
+        if candidate and (match := re.search(SEPARATOR.join(map(re.escape, candidate)), entry, re.I)):
+            return match
+    # Same letters in the same order, split differently: "2.5D" / "2.5 D", "multiplane" / "Multi-Plane".
+    letters = [c for c in "".join(w for w in words if w.isascii())]
+    if len(letters) >= 12:
+        return re.search(SEPARATOR.join(map(re.escape, letters)), entry, re.I)
+    return None
+
+
+def link_title(entry: str, match: re.Match, target: str) -> str:
+    return entry[:match.start()] + f"[[{target}|{wiki_label(match[0])}]]" + entry[match.end():]
+
+
+def link_references(section: str, refs: list[dict], vault: Path) -> tuple[str, list[dict], set[int], dict]:
+    head, items, stray = reference_entries(section)
+    issues = {"stray_fragments": stray, "duplicate_numbers": [], "unknown_numbers": []}
+    seen_numbers, by_number = set(), {}
+    for ref in refs:
+        if not isinstance(ref, dict) or type(ref.get("number")) is not int or ref["number"] in by_number:
+            raise PaperSaveError("references.json entries need unique integer numbers")
+        by_number[ref["number"]] = ref
+    issues["unknown_numbers"] = sorted(set(by_number) - {i["number"] for i in items})
+    notes = index_notes(vault); seen_targets = {}; report = []
+    output = [head]
+    for item in items:
+        number, entry = item["number"], item["lines"][0].rstrip("\n")
+        # Wrapped continuation lines become one line so links and block IDs stay intact.
+        if len(item["lines"]) > 1:
+            entry = " ".join(line.strip() for line in item["lines"])
+        if item["numbered"] and number in seen_numbers:
+            # A second entry with the same number is an extraction error; leave it for review.
+            issues["duplicate_numbers"].append(number)
+            output.append(entry + "\n" + "".join(item["trailing"]))
+            continue
+        seen_numbers.add(number)
+        block = f" ^ref-{number}" if item["numbered"] else ""
+        ref = by_number.get(number)
+        result = {"number": number}
+        if ref and ref.get("title") and (ref.get("doi") or ref.get("target")):
+            title = ref["title"]
+            if not isinstance(title, str) or "\n" in title:
+                raise PaperSaveError(f"Reference {number}: title must be one line")
+            # A registered title missing from the entry means the DOI is wrong (typos happen).
+            match = find_title(entry, title)
+            if not match:
+                result |= {"unlinked": True, "reason": "entry looks cut off by extraction"
+                           if re.search(r"[,;:]\s*$", entry) else f"DOI title not in entry: {title}"}
+            else:
+                # Name unsaved notes after the printed title, as save_paper.py would when saving it.
+                try:
+                    target, exists = resolve_reference(ref | {"title": match[0]}, notes)
+                except PaperSaveError as exc:
+                    # Leave the entry unlinked rather than stopping the whole note.
+                    result |= {"unlinked": True, "reason": str(exc)}
+                    report.append(result)
+                    output.append(entry + block + "\n" + "".join(item["trailing"]))
+                    continue
+                identity = ("doi", doi_key(ref["doi"])) if ref.get("doi") else ("target", target)
+                if target in seen_targets and seen_targets[target][0] != identity:
+                    result |= {"unlinked": True,
+                               "reason": f"same note name as reference {seen_targets[target][1]}: {target}"}
+                else:
+                    seen_targets.setdefault(target, (identity, number))
+                    entry = link_title(entry, match, target)
+                    result |= {"target": target, "exists": exists}
+        else:
+            result["unlinked"] = True
+        report.append(result)
+        output.append(entry + block + "\n" + "".join(item["trailing"]))
+    numbered = {i["number"] for i in items if i["numbered"]}
+    return "".join(output), report, numbered, issues
+
+
 def build_note(text: str, refs: list[dict], vault: Path) -> tuple[str, dict]:
     if not isinstance(refs, list): raise PaperSaveError("Reference manifest must be an array")
-    if any(title in {"References", "Bibliography"} for _, _, title in body_headings(text)):
-        raise PaperSaveError("Draft must omit References; provide them in the JSON manifest")
     if re.search(r"\^ref-\d+\b", SHIELDS.sub("", text)):
         raise PaperSaveError("Draft already contains reference block IDs")
-    references, report = render_references(refs, vault)
-    linked, cited = link_citations(text, {r["number"] for r in refs})
-    # Keep the PDF/BibTeX tail, if present, after References.
-    pos = next((pos for pos, level, title in body_headings(linked)
-                if level == 2 and title in {"PDF", "BibTeX"}), len(linked))
-    final = linked[:pos].rstrip() + "\n\n" + references + "\n" + linked[pos:]
-    return final, {"references": report, "cited_numbers": sorted(cited)}
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--markdown", required=True, type=Path)
-    parser.add_argument("--references", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--vault-root", type=Path, help="Explicit test Vault; otherwise PAPER_SAVE_VAULT_ROOT")
-    args = parser.parse_args()
-    try:
-        vault = args.vault_root.resolve() if args.vault_root else get_vault_root()
-        if not vault.is_dir(): raise PaperSaveError("Vault root does not exist")
-        text = args.markdown.read_text(encoding="utf-8")
-        refs = json.loads(args.references.read_text(encoding="utf-8"))
-        result, report = build_note(text, refs, vault)
-        with args.output.open("x", encoding="utf-8") as file: file.write(result)
-        print(json.dumps(report, ensure_ascii=False, indent=2))
-    except (OSError, ValueError, PaperSaveError) as exc:
-        parser.exit(1, f"paper2obsidian error: {exc}\n")
-
-
-if __name__ == "__main__":
-    main()
+    span = find_reference_section(text)
+    unmatched = []
+    if span is None:
+        if refs: raise PaperSaveError("Draft has no References section")
+        return text, {"references": [], "cited_numbers": [], "section_found": False}
+    start, end = span
+    section, report, numbers, issues = link_references(text[start:end], refs, vault)
+    # Only body text outside the References section carries in-text citations.
+    before, cited = link_citations(text[:start], numbers, unmatched)
+    after, cited_after = link_citations(text[end:], numbers, unmatched)
+    gaps = sorted(set(range(1, max(numbers) + 1)) - numbers) if numbers else []
+    return before + section + after, {"references": report, "cited_numbers": sorted(cited | cited_after),
+                                      "missing_numbers": gaps, "unmatched_brackets": unmatched[:20], **issues}

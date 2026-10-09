@@ -1,14 +1,11 @@
-#!/usr/bin/env python3
-"""Save a paper note, PDF, and image artifacts without overwriting existing work."""
+"""Save a paper note, its PDF and referenced images into the Vault without overwriting existing work."""
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import re
 import shutil
-import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -91,16 +88,6 @@ def get_vault_root() -> Path:
     return candidate
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--title", required=True, help="Official paper title")
-    parser.add_argument("--pdf", required=True, type=Path, help="Path to original PDF file")
-    parser.add_argument("--markdown", required=True, type=Path, help="Path to formatted note markdown")
-    parser.add_argument("--artifacts", type=Path, help="Path to extracted image artifacts directory")
-    parser.add_argument("--check-only", action="store_true", help="Only check for name conflicts without saving")
-    return parser.parse_args()
-
-
 def check_conflicts(papers_dir: Path, sanitized_title: str) -> None:
     """Check destinations without creating or changing anything."""
     note_path = papers_dir / f"{sanitized_title}.md"
@@ -115,7 +102,6 @@ def check_conflicts(papers_dir: Path, sanitized_title: str) -> None:
 def transform_and_collect_images(
     text: str,
     markdown_dir: Path,
-    artifacts_dir: Path | None,
     sanitized_title: str,
 ) -> tuple[str, list[tuple[Path, str]]]:
     """Transform markdown image links to Obsidian wikilinks and assign numbered filenames."""
@@ -136,8 +122,6 @@ def transform_and_collect_images(
                 paths.append(Path(unquote(reference)))
         for path in paths:
             candidates = [path] if path.is_absolute() else [markdown_dir / path]
-            if artifacts_dir and not path.is_absolute():
-                candidates.append(artifacts_dir / path)
             for candidate in candidates:
                 if candidate.is_file():
                     return candidate.resolve()
@@ -194,12 +178,6 @@ def transform_and_collect_images(
             output_lines.append(line)
     flush_pending()
 
-    # Keep every supported image artifact, including nested and unreferenced files.
-    if artifacts_dir and artifacts_dir.is_dir():
-        for artifact in sorted(artifacts_dir.rglob("*")):
-            if artifact.is_file() and artifact.suffix.lower() in IMAGE_SUFFIXES:
-                assign(artifact)
-
     def replace_figure(match: re.Match[str]) -> str:
         value = match.group(1).strip()
         if value.startswith('"'):
@@ -234,7 +212,6 @@ def save_paper(
     title: str,
     pdf_path: Path,
     markdown_path: Path,
-    artifacts_dir: Path | None,
 ) -> tuple[Path, Path, int]:
     """Save a paper while reserving its assets directory exclusively.
 
@@ -249,8 +226,6 @@ def save_paper(
         raise PaperSaveError(f"Original PDF not found or is empty: {pdf_path}")
     if not markdown_path.is_file() or markdown_path.stat().st_size == 0:
         raise PaperSaveError(f"Markdown note not found or is empty: {markdown_path}")
-    if artifacts_dir is not None and not artifacts_dir.is_dir():
-        raise PaperSaveError(f"Image artifacts directory not found: {artifacts_dir}")
 
     sanitized = sanitize_title(title)
     papers_dir = vault_root / "papers"
@@ -258,7 +233,6 @@ def save_paper(
     transformed_text, images = transform_and_collect_images(
         raw_text,
         markdown_path.parent,
-        artifacts_dir,
         sanitized,
     )
 
@@ -314,37 +288,3 @@ def save_paper(
         raise PaperSaveError(f"Failed to save paper note: {exc}") from exc
 
     return final_note, final_pdf, len(images)
-
-
-def main() -> int:
-    args = parse_args()
-    try:
-        vault_root = get_vault_root()
-        sanitized = sanitize_title(args.title)
-        papers_dir = vault_root / "papers"
-
-        if args.check_only:
-            check_conflicts(papers_dir, sanitized)
-            print(f"SanitizedTitle: {sanitized}")
-            print(f"VaultRoot: {vault_root}")
-            print("Conflict check: PASSED (No existing note or assets)")
-            return 0
-
-        note, pdf, image_count = save_paper(
-            vault_root,
-            args.title,
-            args.pdf,
-            args.markdown,
-            args.artifacts,
-        )
-        print(f"Saved Note: {note}")
-        print(f"Saved PDF:  {pdf}")
-        print(f"Saved Artifacts: {image_count} images")
-        return 0
-    except (OSError, UnicodeError, PaperSaveError) as exc:
-        print(f"paper2obsidian error: {exc}", file=sys.stderr)
-        return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
