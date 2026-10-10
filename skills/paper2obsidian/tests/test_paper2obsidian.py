@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -232,6 +234,58 @@ class Paper2ObsidianTests(unittest.TestCase):
         self.assertIn(f'figure: "{figure}"\n---\n', out)
         self.assertEqual(run.set_thumbnail(out), out)
         self.assertEqual(run.frontmatter_title(out), "T")
+
+    def verify_cli(self, note):
+        return subprocess.run(
+            [sys.executable, run.__file__, "--work", str(self.root / "work"), "--verify-only", str(note)],
+            capture_output=True, text=True,
+            env={**os.environ, "PAPER_SAVE_VAULT_ROOT": str(self.root / "nonexistent-vault")},
+        )
+
+    def saved_note_for_verification(self):
+        image = self.root / "figure.png"
+        image.write_bytes(b"image")
+        pdf = self.root / "original.pdf"
+        pdf.write_bytes(b"pdf")
+        draft = self.root / "draft.md"
+        draft.write_text('---\ntitle: "Example"\nfigure: "figure.png"\n---\n'
+                         '\n# Example\n\n## Abstract\nText.\n\n![Figure](figure.png)\n', encoding="utf-8")
+        return save_paper(self.root, "Example", pdf, draft)[:2]
+
+    def test_verify_only_checks_edited_note_without_writing_or_requiring_vault(self):
+        note, _ = self.saved_note_for_verification()
+        note.write_text(note.read_text(encoding="utf-8").replace("# Example\n\n", ""), encoding="utf-8")
+        before = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        result = self.verify_cli(note)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"status": "verified", "note": str(note.resolve()), "problems": []})
+        self.assertFalse((self.root / "work").exists())
+        self.assertEqual(before, {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
+
+    def test_verify_only_reports_missing_assets_and_temporary_paths_after_edit(self):
+        note, pdf = self.saved_note_for_verification()
+        image = note.parent / "assets/Example/artifacts/image_001.png"
+        image.unlink()
+        pdf.unlink()
+        with note.open("a", encoding="utf-8") as stream:
+            stream.write(f'\n![Temporary]({self.root / "work" / "image.png"})\n')
+        result = self.verify_cli(note)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["status"], "invalid")
+        self.assertEqual(report["problems"], [
+            "note still points at temporary files",
+            "missing embed: assets/Example/artifacts/image_001.png",
+            "missing thumbnail: assets/Example/artifacts/image_001.png",
+            "PDF was not saved",
+        ])
+
+    def test_verify_only_missing_note_fails_without_creating_files(self):
+        result = self.verify_cli(self.root / "papers/missing.md")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("paper2obsidian error:", result.stderr)
+        self.assertFalse((self.root / "work").exists())
 
 
 if __name__ == '__main__':

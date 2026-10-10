@@ -186,9 +186,11 @@ def finish(work: Path, state: dict, vault: Path) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("pdf", type=Path, nargs="?", help="Input PDF (omit with --resume)")
-    parser.add_argument("--work", required=True, type=Path, help="New working directory")
-    parser.add_argument("--resume", action="store_true", help="Save after the review.md items were fixed in draft.md")
+    parser.add_argument("pdf", type=Path, nargs="?", help="Input PDF (omit with --resume or --verify-only)")
+    parser.add_argument("--work", required=True, type=Path, help="Working directory (new for conversion)")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--resume", action="store_true", help="Save after the review.md items were fixed in draft.md")
+    mode.add_argument("--verify-only", type=Path, metavar="NOTE", help="Check a saved note without converting or writing files")
     parser.add_argument("--vault-root", type=Path, help="Test Vault; otherwise PAPER_SAVE_VAULT_ROOT")
     parser.add_argument("--doi", help="The paper's DOI when page 1 does not print it")
     parser.add_argument("--offline", action="store_true", help="Skip Crossref/doi.org lookups")
@@ -196,6 +198,15 @@ def main():
     args = parser.parse_args()
     work = args.work.resolve()
     try:
+        if args.verify_only:
+            if args.pdf:
+                parser.error("--verify-only does not accept an input PDF")
+            note_path = args.verify_only.resolve()
+            pdf_path = note_path.parent / "assets" / note_path.stem / f"{note_path.stem}.pdf"
+            problems = verify(note_path, pdf_path, work)
+            print(json.dumps({"status": "invalid" if problems else "verified",
+                              "note": str(note_path), "problems": problems}, ensure_ascii=False, indent=1))
+            return 1 if problems else 0
         vault = args.vault_root.resolve() if args.vault_root else get_vault_root()
         if not vault.is_dir():
             raise PaperSaveError(f"Vault root does not exist: {vault}")
